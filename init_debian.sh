@@ -13,6 +13,62 @@ sudo apt update
 # Ensure Zsh, Git, and Curl are present (harmless if already installed)
 sudo apt install -y zsh curl git
 
+# ---  Install Docker Engine and Docker Compose ---
+echo "Installing Docker Engine and Docker Compose..."
+
+# Check if Docker is already installed
+if ! command -v docker &> /dev/null; then
+    echo "Docker not found. Proceeding with installation..."
+    
+    # 1. Add Docker's official GPG key
+    sudo apt update
+    sudo apt install -y ca-certificates curl gnupg lsb-release
+    
+    # Create the keyrings directory if it doesn't exist
+    sudo install -m 0755 -d /etc/apt/keyrings
+    
+    # Download and save the GPG key
+    curl -fsSL https://download.docker.com/linux/debian/gpg | sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg
+    sudo chmod a+r /etc/apt/keyrings/docker.gpg
+
+    # 2. Add the Docker repository to Apt sources
+    echo \
+      "deb [arch=\"$(dpkg --print-architecture)\" signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/debian \
+      \"$(. /etc/os-release && echo \"$VERSION_CODENAME\")\" stable" | \
+      sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+
+    # 3. Install Docker Engine, CLI, and Compose
+    sudo apt update
+    # Install the main packages
+    sudo apt install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+
+    # 4. Manage Docker as a non-root user (CRITICAL STEP)
+    # Add the current user ($USER) to the docker group
+    echo "Adding user '$USER' to the 'docker' group. You will need to log out/in."
+    sudo usermod -aG docker "$USER"
+    
+else
+    echo "Docker already exists. Skipping installation."
+fi
+
+# --- Set up Automated Docker Cleanup Cron Job ---
+echo "Setting up daily Docker cleanup cron job (pruning)."
+
+# The command to run: Docker system prune -a (all unused) and -f (force/non-interactive)
+PRUNE_COMMAND="/usr/bin/docker system prune -a -f"
+
+# The cron schedule (e.g., 3:00 AM every day)
+CRON_SCHEDULE="0 3 * * *"
+
+# Check if the job already exists in the crontab to prevent duplication
+if ! sudo crontab -l | grep -q "$PRUNE_COMMAND"; then
+    # If the job is NOT found, append it to the current user's crontab
+    (sudo crontab -l 2>/dev/null; echo "$CRON_SCHEDULE $PRUNE_COMMAND") | sudo crontab -
+    echo "Successfully added: $CRON_SCHEDULE $PRUNE_COMMAND"
+else
+    echo "Daily prune job already exists. Skipping."
+fi
+
 # Install Oh My Zsh only if it doesn't exist
 if [ ! -d "$HOME/.oh-my-zsh" ]; then
     echo "Installing Oh My Zsh..."
