@@ -5,6 +5,7 @@
 DOTFILES_REPO="krab23/dotfiles.git"
 DOTFILES_URL="https://github.com/${DOTFILES_REPO}"
 DOTFILES_DIR="$HOME/dotfiles"
+NEOVIM_FILE="nvim-linux-x86_64.appimage"
 # --- END CONFIGURATION ---
 
 # --- 0. Prerequisites & Zsh Setup ---
@@ -115,10 +116,15 @@ ln -sf "$DOTFILES_DIR/starship/starship.toml" ~/.config/starship.toml
 echo "3. Installing Neovim and custom configuration..."
 
 if ! command -v nvim &> /dev/null; then
-    echo "Installing Neovim AppImage..."
-    curl -LO https://github.com/neovim/neovim/releases/latest/download/nvim.appimage
-    chmod u+x nvim.appimage
-    sudo mv nvim.appimage /usr/local/bin/nvim
+    echo "Downloading Neovim AppImage: $NEOVIM_FILE"
+    curl -LO https://github.com/neovim/neovim/releases/latest/download/$NEOVIM_FILE
+    chmod u+x $NEOVIM_FILE
+    echo "Extracting Neovim binary..."
+    ./$NEOVIM_FILE --appimage-extract > /dev/null 2>&1
+    # Find the extracted binary and move it to a PATH location
+    sudo mv squashfs-root/usr/* /usr/local/    
+    # Clean up the downloaded file and the extracted directory
+    rm -rf $NEOVIM_FILE squashfs-root
 else
     echo "Neovim binary already exists. Skipping install."
 fi
