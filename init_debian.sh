@@ -121,13 +121,13 @@ if ! command -v nvim &> /dev/null; then
     chmod u+x $NEOVIM_FILE
     echo "Extracting Neovim binary..."
     ./$NEOVIM_FILE --appimage-extract > /dev/null 2>&1
-    # Find the extracted binary and move it to a PATH location
-    sudo mv squashfs-root/usr/* /usr/local/    
-    # Clean up the downloaded file and the extracted directory
-    rm -rf $NEOVIM_FILE squashfs-root
+    # Symlink Neovim to PATH
+    echo "Writing Neovim symlink ..."
+    sudo ln -sf $DOTFILES_DIR/squashfs-root/usr/bin/nvim /usr/local/bin/nvim
 else
     echo "Neovim binary already exists. Skipping install."
 fi
+
 
 # Symlink your Neovim configuration directory (Use -f to FORCE overwrite)
 echo "Overwriting Neovim config symlink..."
