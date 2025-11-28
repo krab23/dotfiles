@@ -3,6 +3,7 @@
 # component_separators = {left = '⧽', right = '⧼'},
 #          section_separators = {left = '', right = ''},
 #          --Separator Options: 
+
  
 format = """
 [](fg:base)\
@@ -31,10 +32,11 @@ $conda\
 [](fg:base) \
 $character"""
 
-right_format= """
-[](fg:base)\
-$time\
-[](fg:base)"""
+#right_format= """
+#[](fg:base)\
+#$time\
+#[](fg:base)\
+#"""
 
 palette = 'catppuccin_frappe'
 
@@ -204,6 +206,7 @@ style = "bg:base fg:mauve"
 format = "[ $path ]($style)"
 truncation_length = 3
 truncation_symbol = "…/"
+truncate_to_repo = true
 
 [directory.substitutions]
 "Desktop" = " "
@@ -222,6 +225,8 @@ style = "bg:base"
 format = '[[ $symbol $branch ](fg:sapphire bg:base)]($style)'
 
 [git_status]
+ahead = "⇡"
+behind = "⇣"
 style = "bg:base"
 format = '[[($all_status$ahead_behind )](fg:sapphire bg:base)]($style)'
 
