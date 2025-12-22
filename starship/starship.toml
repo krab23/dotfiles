@@ -32,11 +32,11 @@ $conda\
 [](fg:base) \
 $character"""
 
-#right_format= """
-#[](fg:base)\
-#$time\
-#[](fg:base)\
-#"""
+right_format= """
+[](fg:base)\
+$time\
+[](fg:base)\
+"""
 
 palette = 'catppuccin_frappe'
 
@@ -204,9 +204,9 @@ format = '[ $user ]($style)'
 [directory]
 style = "bg:base fg:mauve"
 format = "[ $path ]($style)"
-truncation_length = 3
+truncation_length = 8
 truncation_symbol = "…/"
-truncate_to_repo = true
+truncate_to_repo = false
 
 [directory.substitutions]
 "Desktop" = " "
