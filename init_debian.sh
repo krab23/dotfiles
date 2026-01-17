@@ -78,8 +78,10 @@ else
     echo "Oh My Zsh already exists. Skipping install."
 fi
 
-# Set Zsh as default (harmless if already set)
-chsh -s $(which zsh)
+# Set Zsh as default only if not already set
+if [ "$SHELL" != "$(which zsh)" ]; then
+    chsh -s $(which zsh)
+fi
 
 # --- 1. Clone or Pull Your Dotfiles Repository ---
 echo "1. Cloning/Updating your dotfiles repository..."
@@ -98,7 +100,7 @@ fi
 echo "2. Installing Starship (the cross-shell prompt)..."
 # Check if starship is installed and if not, install it.
 if ! command -v starship &> /dev/null; then
-    curl -sS https://starship.rs/install.sh | sh
+    curl -sS https://starship.rs/install.sh | sh -s -- -y
 else
     echo "Starship binary already exists. Skipping install."
 fi
