@@ -115,15 +115,17 @@ ln -sf "$DOTFILES_DIR/starship/starship.toml" ~/.config/starship.toml
 # --- 3. Install Neovim and Configuration ---
 echo "3. Installing Neovim and custom configuration..."
 
+# Install FUSE for AppImage support (required on some Debian systems)
+sudo apt install -y fuse libfuse2
+
 if ! command -v nvim &> /dev/null; then
     echo "Downloading Neovim AppImage: $NEOVIM_FILE"
-    curl -LO https://github.com/neovim/neovim/releases/latest/download/$NEOVIM_FILE
-    chmod u+x $NEOVIM_FILE
-    echo "Extracting Neovim binary..."
-    ./$NEOVIM_FILE --appimage-extract > /dev/null 2>&1
-    # Symlink Neovim to PATH
-    echo "Writing Neovim symlink ..."
-    sudo ln -sf $DOTFILES_DIR/squashfs-root/usr/bin/nvim /usr/local/bin/nvim
+    # Download directly to DOTFILES_DIR for consistent path management
+    curl -L -o "$DOTFILES_DIR/$NEOVIM_FILE" https://github.com/neovim/neovim/releases/latest/download/$NEOVIM_FILE
+    chmod u+x "$DOTFILES_DIR/$NEOVIM_FILE"
+    # Symlink the AppImage directly to PATH (runs without extraction thanks to FUSE)
+    echo "Creating Neovim symlink..."
+    sudo ln -sf "$DOTFILES_DIR/$NEOVIM_FILE" /usr/local/bin/nvim
 else
     echo "Neovim binary already exists. Skipping install."
 fi
