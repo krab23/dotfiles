@@ -111,7 +111,7 @@ return {
     },
     config = function()
       require("mason-lspconfig").setup({
-        automatic_installation = true,
+        automatic_enable = false,
       })
     end,
   },
@@ -119,36 +119,37 @@ return {
     "neovim/nvim-lspconfig",
     event = { "BufReadPre", "BufNewFile" },
     config = function()
-      local lspconfig = require("lspconfig")
       local mason_lspconfig = require("mason-lspconfig")
 
       local default_capabilities = vim.lsp.protocol.make_client_capabilities()
 
-      mason_lspconfig.setup_handlers({
-        function(server_name)
-          lspconfig[server_name].setup({
+      for _, server_name in ipairs(mason_lspconfig.get_installed_servers()) do
+        if server_name ~= "lua_ls" then
+          vim.lsp.config(server_name, {
             capabilities = default_capabilities,
           })
-        end,
-        ["lua_ls"] = function()
-          lspconfig.lua_ls.setup({
-            capabilities = default_capabilities,
-            settings = {
-              Lua = {
-                diagnostics = {
-                  globals = { "vim" },
-                },
-                workspace = {
-                  library = {
-                    [vim.fn.expand("$VIMRUNTIME/lua")] = true,
-                    [vim.fn.stdpath("config") .. "/lua"] = true,
-                  },
-                },
+          vim.lsp.enable(server_name)
+        end
+      end
+
+      vim.lsp.config("lua_ls", {
+        capabilities = default_capabilities,
+        settings = {
+          Lua = {
+            diagnostics = {
+              globals = { "vim" },
+            },
+            workspace = {
+              library = {
+                [vim.fn.expand("$VIMRUNTIME/lua")] = true,
+                [vim.fn.stdpath("config") .. "/lua"] = true,
               },
             },
-          })
-        end,
+          },
+        },
       })
+
+      vim.lsp.enable("lua_ls")
     end,
   },
 
@@ -185,7 +186,17 @@ return {
 
       if mason_registry.has_package("codelldb") then
         local pkg = mason_registry.get_package("codelldb")
-        local install_path = pkg:get_install_path()
+        local install_path = nil
+
+        if pkg and type(pkg.get_install_path) == "function" then
+          install_path = pkg:get_install_path()
+        elseif pkg and type(pkg.install_path) == "string" then
+          install_path = pkg.install_path
+        elseif pkg and type(pkg.path) == "string" then
+          install_path = pkg.path
+        end
+
+        if install_path then
         codelldb_path = install_path .. "/extension/adapter/codelldb"
 
         if vim.fn.has("mac") == 1 then
@@ -194,6 +205,7 @@ return {
           liblldb_path = install_path .. "/extension/lldb/bin/liblldb.dll"
         else
           liblldb_path = install_path .. "/extension/lldb/lib/liblldb.so"
+        end
         end
       end
 
