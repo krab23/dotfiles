@@ -30,3 +30,20 @@ vim.opt.textwidth=80
 vim.opt.colorcolumn="+1"
 
 require("lazy").setup("plugins")
+
+vim.api.nvim_create_autocmd("FileType", {
+  pattern = {
+    "lua",
+    "javascript",
+    "javascriptreact",
+    "typescript",
+    "typescriptreact",
+    "python",
+    "markdown",
+  },
+  callback = function()
+    pcall(vim.treesitter.start)
+    vim.wo.foldexpr="v:lua.vim.treesitter.foldexpr()"
+    vim.wo.foldmethod="expr"
+  end,
+})

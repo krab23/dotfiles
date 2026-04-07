@@ -58,14 +58,19 @@ return {
   },
   {
     "nvim-treesitter/nvim-treesitter",
+    branch = "main",
+    lazy = false,
     build = ":TSUpdate",
-    event = { "BufReadPost", "BufNewFile" },
     config = function()
-      require("nvim-treesitter.configs").setup({
-        highlight = {
-          enable = true,
-          additional_vim_regex_highlight = false,
-        },
+      local ts = require("nvim-treesitter")
+
+      ts.setup({})
+      ts.install({
+        "lua",
+        "javascript",
+        "typescript",
+        "python",
+        "markdown"
       })
     end,
   },
@@ -225,7 +230,7 @@ return {
         }
       end
 
-      for _, lang in ipairs({ "c", "cpp" }) do
+      for _, lang in ipairs({ "c", "cpp","python" }) do
         dap.configurations[lang] = {
           {
             name = "Launch file",

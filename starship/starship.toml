@@ -273,7 +273,7 @@ format = '[[ $symbol( $version) ](fg:mauve bg:base)]($style)'
 [python]
 symbol = ""
 style = "bg:base"
-format = '[[ $symbol( $version) ](fg:blue bg:base)]($style)'
+format = '[[ $symbol( $version)( $virtualenv) ](fg:blue bg:base)]($style)'
 
 [lua]
 style = "bg:base"
