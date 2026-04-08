@@ -29,6 +29,24 @@ vim.opt.number=true
 vim.opt.textwidth=80
 vim.opt.colorcolumn="+1"
 
+--clipboard from WSL
+vim.opt.fileformat = "unix"
+vim.opt.fileformats = "unix,dos"
+
+vim.opt.clipboard:append("unnamedplus")
+vim.g.clipboard = {
+  name = "wsl-clip",
+  copy = {
+    ["+"] = "clip.exe",
+    ["*"] = "clip.exe",
+  },
+  paste = {
+    ["+"] = [[powershell.exe -NoProfile -Command "(Get-Clipboard -Raw).Replace(\"`r`n\", \"`n\")"]],
+    ["*"] = [[powershell.exe -NoProfile -Command "(Get-Clipboard -Raw).Replace(\"`r`n\", \"`n\")"]],
+  },
+  cache_enabled = 0,
+}
+
 require("lazy").setup("plugins")
 
 vim.api.nvim_create_autocmd("FileType", {
