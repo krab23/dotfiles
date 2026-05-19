@@ -70,7 +70,7 @@ return {
         "javascript",
         "typescript",
         "python",
-        "markdown"
+        "markdown",
       })
     end,
   },
@@ -168,8 +168,11 @@ return {
     },
     config = function()
       require("mason-nvim-dap").setup({
-        ensure_installed = { "codelldb" },
-        automatic_installation = true,
+        ensure_installed = {
+          "codelldb",
+          "python",
+        },
+        automatic_installation = false,
       })
     end,
   },
@@ -202,15 +205,15 @@ return {
         end
 
         if install_path then
-        codelldb_path = install_path .. "/extension/adapter/codelldb"
+          codelldb_path = install_path .. "/extension/adapter/codelldb"
 
-        if vim.fn.has("mac") == 1 then
-          liblldb_path = install_path .. "/extension/lldb/lib/liblldb.dylib"
-        elseif vim.fn.has("win32") == 1 then
-          liblldb_path = install_path .. "/extension/lldb/bin/liblldb.dll"
-        else
-          liblldb_path = install_path .. "/extension/lldb/lib/liblldb.so"
-        end
+          if vim.fn.has("mac") == 1 then
+            liblldb_path = install_path .. "/extension/lldb/lib/liblldb.dylib"
+          elseif vim.fn.has("win32") == 1 then
+            liblldb_path = install_path .. "/extension/lldb/bin/liblldb.dll"
+          else
+            liblldb_path = install_path .. "/extension/lldb/lib/liblldb.so"
+          end
         end
       end
 
@@ -230,7 +233,7 @@ return {
         }
       end
 
-      for _, lang in ipairs({ "c", "cpp","python" }) do
+      for _, lang in ipairs({ "c", "cpp" }) do
         dap.configurations[lang] = {
           {
             name = "Launch file",
@@ -251,6 +254,43 @@ return {
           },
         }
       end
+
+      local debugpy_path = vim.fn.stdpath("data")
+        .. "/mason/packages/debugpy/venv/bin/python"
+
+      dap.adapters.python = {
+        type = "executable",
+        command = debugpy_path,
+        args = { "-m", "debugpy.adapter" },
+      }
+
+      dap.configurations.python = {
+        {
+          type = "python",
+          request = "launch",
+          name = "Launch file",
+          program = "${file}",
+          pythonPath = function()
+            local venv = vim.fn.getenv("VIRTUAL_ENV")
+
+            if venv and venv ~= vim.NIL and venv ~= "" then
+              return venv .. "/bin/python"
+            end
+
+            local python3 = vim.fn.exepath("python3")
+            if python3 and python3 ~= "" then
+              return python3
+            end
+
+            local python = vim.fn.exepath("python")
+            if python and python ~= "" then
+              return python
+            end
+
+            return "python"
+          end,
+        },
+      }
     end,
   },
 

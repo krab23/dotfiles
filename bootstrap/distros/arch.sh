@@ -3,7 +3,7 @@
 set -euo pipefail
 
 distro_install_base_packages() {
-  pkg_install ca-certificates curl git zsh
+  pkg_install base-devel ca-certificates curl git zsh
 }
 
 distro_install_docker() {
@@ -19,5 +19,5 @@ distro_install_docker() {
 
 distro_install_nvim() {
   log_info "Installing Neovim packages (Arch family)."
-  pkg_install neovim base-devel tree-sitter-cli
+  pkg_install neovim tree-sitter-cli
 }
