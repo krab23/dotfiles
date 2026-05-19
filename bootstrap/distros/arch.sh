@@ -18,11 +18,6 @@ distro_install_docker() {
 }
 
 distro_install_nvim() {
-  if command_exists nvim; then
-    log_info "Neovim already installed; skipping package install."
-    return 0
-  fi
-
-  log_info "Installing Neovim package (Arch family)."
-  pkg_install neovim
+  log_info "Installing Neovim packages (Arch family)."
+  pkg_install neovim base-devel tree-sitter-cli
 }
