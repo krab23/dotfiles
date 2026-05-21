@@ -6,7 +6,11 @@ module_starship() {
   if ! command_exists starship; then
     log_info "Installing Starship."
     local installer
-    installer="$(mktemp)"
+    if [ "${DRY_RUN:-0}" = "1" ]; then
+      installer="${TMPDIR:-/tmp}/starship-install.sh"
+    else
+      installer="$(mktemp)"
+    fi
     run_cmd curl -fsSL -o "$installer" "https://starship.rs/install.sh"
     run_cmd sh "$installer" -y
     run_cmd rm -f "$installer"
