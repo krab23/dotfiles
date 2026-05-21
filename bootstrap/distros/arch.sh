@@ -3,7 +3,7 @@
 set -euo pipefail
 
 distro_install_base_packages() {
-  pkg_install base-devel ca-certificates curl git zsh
+  pkg_install base-devel ca-certificates curl git ripgrep zsh
 }
 
 distro_install_docker() {

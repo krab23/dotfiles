@@ -3,7 +3,7 @@
 set -euo pipefail
 
 distro_install_base_packages() {
-  pkg_install ca-certificates curl git gnupg lsb-release zsh
+  pkg_install ca-certificates curl git gnupg lsb-release ripgrep zsh
 }
 
 distro_install_docker() {
