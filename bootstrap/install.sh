@@ -74,6 +74,10 @@ source "$SCRIPT_DIR/modules/starship.sh"
 source "$SCRIPT_DIR/modules/nvim.sh"
 source "$SCRIPT_DIR/modules/docker.sh"
 
+if declare -F distro_setup_locale >/dev/null; then
+  distro_setup_locale
+fi
+
 run_module() {
   local module="$1"
   if module_selected "$module"; then
