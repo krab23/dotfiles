@@ -23,7 +23,8 @@ Usage: bootstrap/install.sh [options]
 Options:
   --only <csv>               Run only selected modules (zsh,starship,nvim,docker)
   --skip <csv>               Skip selected modules
-  --distro <debian|arch>     Override distro detection
+  --distro <debian|ubuntu|arch>
+                             Override distro detection
   --enable-docker-prune      Add daily docker prune cron job (opt-in)
   --dry-run                  Print planned actions without running commands
   --help                     Show this help message
@@ -33,14 +34,17 @@ EOF
 while [ "$#" -gt 0 ]; do
   case "$1" in
     --only)
+      require_option_value "$1" "${2:-}"
       ONLY_MODULES="$2"
       shift 2
       ;;
     --skip)
+      require_option_value "$1" "${2:-}"
       SKIP_MODULES="$2"
       shift 2
       ;;
     --distro)
+      require_option_value "$1" "${2:-}"
       FORCED_DISTRO_FAMILY="$2"
       shift 2
       ;;

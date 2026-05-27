@@ -22,6 +22,16 @@ command_exists() {
   command -v "$1" >/dev/null 2>&1
 }
 
+require_option_value() {
+  local option="$1"
+  local value="${2:-}"
+
+  if [ -z "$value" ] || [ "${value#--}" != "$value" ]; then
+    log_error "Option requires a value: $option"
+    exit 1
+  fi
+}
+
 if [ "$(id -u)" -eq 0 ]; then
   SUDO=""
 else

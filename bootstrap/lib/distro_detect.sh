@@ -19,8 +19,11 @@ detect_distro_family() {
   like="$(. /etc/os-release && printf "%s" "${ID_LIKE:-}")"
 
   case "$id" in
-    debian|ubuntu)
+    debian)
       DISTRO_FAMILY="debian"
+      ;;
+    ubuntu)
+      DISTRO_FAMILY="ubuntu"
       ;;
     arch|manjaro|endeavouros)
       DISTRO_FAMILY="arch"
@@ -42,8 +45,8 @@ detect_distro_family() {
 }
 
 require_supported_distro() {
-  if [ "$DISTRO_FAMILY" != "debian" ] && [ "$DISTRO_FAMILY" != "arch" ]; then
-    log_error "Unsupported distro family: $DISTRO_FAMILY (supported: debian, arch)"
+  if [ "$DISTRO_FAMILY" != "debian" ] && [ "$DISTRO_FAMILY" != "ubuntu" ] && [ "$DISTRO_FAMILY" != "arch" ]; then
+    log_error "Unsupported distro family: $DISTRO_FAMILY (supported: debian, ubuntu, arch)"
     exit 1
   fi
 }

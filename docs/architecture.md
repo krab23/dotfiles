@@ -9,7 +9,7 @@ It composes four modules:
 - `docker`
 
 Flow:
-1. Detect distro family (`debian` or `arch`)
+1. Detect distro family (`debian`, `ubuntu`, or `arch`)
 2. Load distro-specific installers from `bootstrap/distros/<family>.sh`
 3. Run selected modules from `bootstrap/modules/*.sh`
 

@@ -12,16 +12,16 @@ distro_install_docker() {
     return 0
   fi
 
-  log_info "Installing Docker Engine (Debian family)."
+  log_info "Installing Docker Engine (Ubuntu family)."
   pkg_install ca-certificates curl gnupg lsb-release
 
   run_sudo install -m 0755 -d /etc/apt/keyrings
 
   if [ ! -f /etc/apt/keyrings/docker.gpg ]; then
     if [ "${DRY_RUN:-0}" = "1" ]; then
-      printf "[dry-run] curl -fsSL https://download.docker.com/linux/debian/gpg | sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg\n"
+      printf "[dry-run] curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg\n"
     else
-      curl -fsSL https://download.docker.com/linux/debian/gpg | run_sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg
+      curl -fsSL https://download.docker.com/linux/ubuntu/gpg | run_sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg
     fi
     run_sudo chmod a+r /etc/apt/keyrings/docker.gpg
   fi
@@ -29,12 +29,12 @@ distro_install_docker() {
   local arch
   local codename
   local repo_line
-  arch="$(debian_package_arch)"
+  arch="$(ubuntu_package_arch)"
   codename="$(
     . /etc/os-release
-    printf "%s" "${VERSION_CODENAME:-bookworm}"
+    printf "%s" "${VERSION_CODENAME:-noble}"
   )"
-  repo_line="deb [arch=${arch} signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/debian ${codename} stable"
+  repo_line="deb [arch=${arch} signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu ${codename} stable"
 
   if [ "${DRY_RUN:-0}" = "1" ]; then
     printf "[dry-run] write /etc/apt/sources.list.d/docker.list: %s\n" "$repo_line"
@@ -52,7 +52,7 @@ distro_install_nvim() {
     return 0
   fi
 
-  log_info "Installing Neovim AppImage (Debian family)."
+  log_info "Installing Neovim AppImage (Ubuntu family)."
   pkg_install fuse libfuse2
 
   local appimage
@@ -64,13 +64,13 @@ distro_install_nvim() {
   run_sudo ln -sfn "$appimage" /usr/local/bin/nvim
 }
 
-debian_package_arch() {
+ubuntu_package_arch() {
   if command_exists dpkg; then
     dpkg --print-architecture
   elif [ "${DRY_RUN:-0}" = "1" ]; then
     printf "<dpkg-architecture>\n"
   else
-    log_error "dpkg not found; cannot determine Debian package architecture."
+    log_error "dpkg not found; cannot determine Ubuntu package architecture."
     exit 1
   fi
 }

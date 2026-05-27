@@ -10,7 +10,7 @@ pkg_update() {
   fi
 
   case "$DISTRO_FAMILY" in
-    debian)
+    debian|ubuntu)
       run_sudo apt-get update
       ;;
     arch)
@@ -33,7 +33,7 @@ pkg_install() {
   pkg_update
 
   case "$DISTRO_FAMILY" in
-    debian)
+    debian|ubuntu)
       run_sudo env DEBIAN_FRONTEND=noninteractive apt-get install -y "$@"
       ;;
     arch)

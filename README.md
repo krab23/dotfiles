@@ -8,6 +8,7 @@ Multi-distro bootstrap for a terminal-focused setup with:
 
 Supported distro families:
 - Debian (including Debian-based cloud VMs like GCP images)
+- Ubuntu
 - Arch (including Arch on WSL)
 
 ## Quick start
@@ -22,6 +23,7 @@ Supported distro families:
 ./bootstrap/install.sh --only zsh,starship
 ./bootstrap/install.sh --skip docker
 ./bootstrap/install.sh --distro arch
+./bootstrap/install.sh --distro ubuntu
 ./bootstrap/install.sh --dry-run
 ./bootstrap/install.sh --enable-docker-prune
 ```
