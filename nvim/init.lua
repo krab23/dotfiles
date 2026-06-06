@@ -28,6 +28,9 @@ vim.opt.relativenumber=true
 vim.opt.number=true
 vim.opt.textwidth=80
 vim.opt.colorcolumn="+1"
+vim.opt.foldenable= true
+vim.opt.foldlevel=8
+vim.opt.foldlevelstart=8
 
 --clipboard from WSL
 vim.opt.fileformat = "unix"
