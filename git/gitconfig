@@ -1,0 +1,14 @@
+[alias]
+  lg = log --oneline --graph --decorate --all
+  st = status -sb
+  last = show --stat --oneline HEAD
+
+[init]
+  defaultBranch = main
+
+[core]
+  autocrlf = input
+  editor = nvim
+
+[include]
+  path = ~/.gitconfig.local

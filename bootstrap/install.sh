@@ -21,7 +21,7 @@ usage() {
 Usage: bootstrap/install.sh [options]
 
 Options:
-  --only <csv>               Run only selected modules (zsh,starship,nvim,docker)
+  --only <csv>               Run only selected modules (git,zsh,starship,nvim,docker)
   --skip <csv>               Skip selected modules
   --distro <debian|ubuntu|arch>
                              Override distro detection
@@ -73,6 +73,7 @@ require_supported_distro
 log_info "Detected distro family: $DISTRO_FAMILY"
 
 source "$SCRIPT_DIR/distros/${DISTRO_FAMILY}.sh"
+source "$SCRIPT_DIR/modules/git.sh"
 source "$SCRIPT_DIR/modules/zsh.sh"
 source "$SCRIPT_DIR/modules/starship.sh"
 source "$SCRIPT_DIR/modules/nvim.sh"
@@ -92,6 +93,7 @@ run_module() {
   fi
 }
 
+run_module git
 run_module zsh
 run_module starship
 run_module nvim
