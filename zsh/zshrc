@@ -108,3 +108,6 @@ eval "$(starship init zsh)"
 
 # Added by Antigravity CLI installer
 export PATH="/home/krab/.local/bin:$PATH"
+
+# opencode
+export PATH=/home/krab/.opencode/bin:$PATH
