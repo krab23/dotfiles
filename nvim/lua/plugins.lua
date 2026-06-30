@@ -71,6 +71,7 @@ return {
         "typescript",
         "python",
         "markdown",
+        "markdown_inline",
       })
     end,
   },
