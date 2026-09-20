@@ -1,0 +1,44 @@
+name: Dotfiles checks
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      nvim_integration:
+        description: Download and test the complete Neovim toolchain
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+      - name: Install check prerequisites
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y zsh neovim
+      - name: Syntax and whitespace
+        shell: bash
+        run: |
+          for script in bootstrap/install.sh bootstrap/lib/*.sh bootstrap/distros/*.sh bootstrap/modules/*.sh tests/*.sh; do
+            bash -n "$script"
+          done
+          zsh -n zsh/zshrc
+          git diff-tree --check --root -r -m HEAD
+      - run: bash tests/bootstrap.sh
+      - run: bash tests/zsh.sh
+      - run: bash tests/nvim.sh
+      - name: Install integration prerequisites
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.nvim_integration }}
+        run: sudo apt-get install -y build-essential python3-venv python3-pip curl ca-certificates tar gzip unzip xz-utils
+      - name: Neovim integration in a disposable home
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.nvim_integration }}
+        timeout-minutes: 25
+        run: bash tests/nvim.sh --integration

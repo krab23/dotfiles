@@ -3,20 +3,21 @@
 set -euo pipefail
 
 module_starship() {
-  if ! command_exists starship; then
+  if [ "${CONFIG_ONLY:-0}" = 1 ]; then
+    :
+  elif [ "$DISTRO_FAMILY" = arch ]; then
+    pkg_install starship
+  elif ! command_exists starship; then
+    pkg_install curl ca-certificates tar gzip
     log_info "Installing Starship."
     local installer
-    if [ "${DRY_RUN:-0}" = "1" ]; then
-      installer="${TMPDIR:-/tmp}/starship-install.sh"
-    else
-      installer="$(mktemp)"
-    fi
+    make_temp
+    installer="$TEMP_FILE"
     run_cmd curl -fsSL -o "$installer" "https://starship.rs/install.sh"
-    run_cmd sh "$installer" -y
-    run_cmd rm -f "$installer"
+    run_sudo sh "$installer" -y --bin-dir /usr/local/bin
   else
     log_info "Starship already installed; skipping binary install."
   fi
 
-  link_with_backup "$DOTFILES_ROOT/starship/starship.toml" "$HOME/.config/starship.toml"
+  link_with_backup "$DOTFILES_ROOT/starship/starship.toml" "${XDG_CONFIG_HOME:-$HOME/.config}/starship.toml"
 }

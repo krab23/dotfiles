@@ -3,6 +3,7 @@
 set -euo pipefail
 
 module_git() {
+  pkg_install git
   link_with_backup "$DOTFILES_ROOT/git/gitconfig" "$HOME/.gitconfig"
 
   if [[ ! -e "$HOME/.gitconfig.local" ]]; then

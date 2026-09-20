@@ -7,6 +7,7 @@ DOTFILES_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 
 export DOTFILES_ROOT
 export DRY_RUN=0
+export CONFIG_ONLY=0
 export ONLY_MODULES=""
 export SKIP_MODULES=""
 export ENABLE_DOCKER_PRUNE=0
@@ -26,7 +27,8 @@ Options:
   --distro <debian|ubuntu|arch>
                              Override distro detection
   --enable-docker-prune      Add daily docker prune cron job (opt-in)
-  --dry-run                  Print planned actions without running commands
+  --dry-run                  Inspect current state and print changes without applying them
+  --config-only              Link selected configs without installing software
   --help                     Show this help message
 EOF
 }
@@ -56,6 +58,10 @@ while [ "$#" -gt 0 ]; do
       DRY_RUN=1
       shift 1
       ;;
+    --config-only)
+      CONFIG_ONLY=1
+      shift
+      ;;
     --help|-h)
       usage
       exit 0
@@ -68,8 +74,11 @@ while [ "$#" -gt 0 ]; do
   esac
 done
 
+validate_module_csv "$ONLY_MODULES"
+validate_module_csv "$SKIP_MODULES"
 detect_distro_family
 require_supported_distro
+initialize_target_user
 log_info "Detected distro family: $DISTRO_FAMILY"
 
 source "$SCRIPT_DIR/distros/${DISTRO_FAMILY}.sh"
@@ -79,8 +88,17 @@ source "$SCRIPT_DIR/modules/starship.sh"
 source "$SCRIPT_DIR/modules/nvim.sh"
 source "$SCRIPT_DIR/modules/docker.sh"
 
-if declare -F distro_setup_locale >/dev/null; then
-  distro_setup_locale
+if [ "$DRY_RUN" = 0 ] && [ "$CONFIG_ONLY" = 0 ]; then
+  for module in git zsh starship nvim docker; do
+    if module_selected "$module"; then
+      if ! command_exists sudo; then
+        log_error "sudo is required for installation. Install/configure sudo, then run as your normal user."
+        exit 1
+      fi
+      sudo -v
+      break
+    fi
+  done
 fi
 
 run_module() {

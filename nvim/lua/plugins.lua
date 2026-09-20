@@ -65,14 +65,9 @@ return {
       local ts = require("nvim-treesitter")
 
       ts.setup({})
-      ts.install({
-        "lua",
-        "javascript",
-        "typescript",
-        "python",
-        "markdown",
-        "markdown_inline",
-      })
+      if vim.env.DOTFILES_NVIM_PROVISION ~= "1" then
+        ts.install(require("tooling").parsers)
+      end
     end,
   },
   {
@@ -97,45 +92,39 @@ return {
   {
     "github/copilot.vim",
     event = "InsertEnter",
+    cmd = "Copilot",
   },
 
   -- LSP
   {
     "williamboman/mason.nvim",
     cmd = { "Mason", "MasonInstall", "MasonUpdate" },
-    build = ":MasonUpdate",
     config = function()
       require("mason").setup()
     end,
   },
   {
     "williamboman/mason-lspconfig.nvim",
-    event = { "BufReadPre", "BufNewFile" },
+    lazy = false,
     dependencies = {
       "williamboman/mason.nvim",
       "neovim/nvim-lspconfig",
     },
     config = function()
       require("mason-lspconfig").setup({
+        ensure_installed = vim.env.DOTFILES_NVIM_PROVISION == "1" and {} or require("tooling").servers,
         automatic_enable = false,
       })
+      vim.lsp.enable(require("tooling").servers)
     end,
   },
   {
     "neovim/nvim-lspconfig",
-    event = { "BufReadPre", "BufNewFile" },
     config = function()
-      local mason_lspconfig = require("mason-lspconfig")
-
       local default_capabilities = vim.lsp.protocol.make_client_capabilities()
 
-      for _, server_name in ipairs(mason_lspconfig.get_installed_servers()) do
-        if server_name ~= "lua_ls" then
-          vim.lsp.config(server_name, {
-            capabilities = default_capabilities,
-          })
-          vim.lsp.enable(server_name)
-        end
+      for _, server_name in ipairs(require("tooling").servers) do
+        vim.lsp.config(server_name, { capabilities = default_capabilities })
       end
 
       vim.lsp.config("lua_ls", {
@@ -147,29 +136,28 @@ return {
             },
             workspace = {
               library = {
-                [vim.fn.expand("$VIMRUNTIME/lua")] = true,
-                [vim.fn.stdpath("config") .. "/lua"] = true,
+                vim.env.VIMRUNTIME .. "/lua",
+                vim.fn.stdpath("config") .. "/lua",
               },
             },
           },
         },
       })
 
-      vim.lsp.enable("lua_ls")
     end,
   },
 
   -- DAP
   {
     "jay-babu/mason-nvim-dap.nvim",
-    event = "VeryLazy",
+    lazy = false,
     dependencies = {
       "williamboman/mason.nvim",
       "mfussenegger/nvim-dap",
     },
     config = function()
       require("mason-nvim-dap").setup({
-        ensure_installed = {
+        ensure_installed = vim.env.DOTFILES_NVIM_PROVISION == "1" and {} or {
           "codelldb",
           "python",
         },
@@ -179,6 +167,7 @@ return {
   },
   {
     "mfussenegger/nvim-dap",
+    dependencies = { "williamboman/mason.nvim" },
     keys = {
       { "<F5>", function() require("dap").continue() end, desc = "DAP continue" },
       { "<F10>", function() require("dap").step_over() end, desc = "DAP step over" },
@@ -188,51 +177,18 @@ return {
     },
     config = function()
       local dap = require("dap")
-      local mason_registry = require("mason-registry")
-
-      local codelldb_path = "codelldb"
-      local liblldb_path = nil
-
-      if mason_registry.has_package("codelldb") then
-        local pkg = mason_registry.get_package("codelldb")
-        local install_path = nil
-
-        if pkg and type(pkg.get_install_path) == "function" then
-          install_path = pkg:get_install_path()
-        elseif pkg and type(pkg.install_path) == "string" then
-          install_path = pkg.install_path
-        elseif pkg and type(pkg.path) == "string" then
-          install_path = pkg.path
-        end
-
-        if install_path then
-          codelldb_path = install_path .. "/extension/adapter/codelldb"
-
-          if vim.fn.has("mac") == 1 then
-            liblldb_path = install_path .. "/extension/lldb/lib/liblldb.dylib"
-          elseif vim.fn.has("win32") == 1 then
-            liblldb_path = install_path .. "/extension/lldb/bin/liblldb.dll"
-          else
-            liblldb_path = install_path .. "/extension/lldb/lib/liblldb.so"
-          end
-        end
-      end
+      -- Mason v2 removed Package:get_install_path(). Use its configured root.
+      local mason_root = require("mason.settings").current.install_root_dir
 
       dap.adapters.codelldb = {
         type = "server",
         port = "${port}",
         executable = {
-          command = codelldb_path,
+          command = mason_root .. "/bin/codelldb",
           args = { "--port", "${port}" },
           detached = false,
         },
       }
-
-      if liblldb_path then
-        dap.adapters.codelldb.env = {
-          LLDB_LAUNCH_FLAG_LAUNCH_IN_TTY = "YES",
-        }
-      end
 
       for _, lang in ipairs({ "c", "cpp" }) do
         dap.configurations[lang] = {
@@ -256,8 +212,7 @@ return {
         }
       end
 
-      local debugpy_path = vim.fn.stdpath("data")
-        .. "/mason/packages/debugpy/venv/bin/python"
+      local debugpy_path = mason_root .. "/packages/debugpy/venv/bin/python"
 
       dap.adapters.python = {
         type = "executable",
@@ -276,6 +231,11 @@ return {
 
             if venv and venv ~= vim.NIL and venv ~= "" then
               return venv .. "/bin/python"
+            end
+
+            local project_python = vim.fn.getcwd() .. "/.venv/bin/python"
+            if vim.fn.executable(project_python) == 1 then
+              return project_python
             end
 
             local python3 = vim.fn.exepath("python3")

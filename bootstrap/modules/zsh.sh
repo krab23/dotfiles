@@ -3,15 +3,19 @@
 set -euo pipefail
 
 module_zsh() {
-  distro_install_base_packages
+  if [ "${CONFIG_ONLY:-0}" = 1 ]; then
+    link_with_backup "$DOTFILES_ROOT/zsh/zshrc" "$HOME/.zshrc"
+    return 0
+  fi
+  pkg_install zsh git curl ca-certificates
 
   if [ ! -d "$HOME/.oh-my-zsh" ]; then
     log_info "Installing Oh My Zsh."
     local installer
-    installer="$(mktemp)"
+    make_temp
+    installer="$TEMP_FILE"
     run_cmd curl -fsSL -o "$installer" "https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh"
-    run_cmd sh "$installer" --unattended
-    run_cmd rm -f "$installer"
+    run_cmd env ZSH="$HOME/.oh-my-zsh" CHSH=no RUNZSH=no KEEP_ZSHRC=yes sh "$installer" --unattended
   else
     log_info "Oh My Zsh already installed; skipping."
   fi
@@ -21,13 +25,11 @@ module_zsh() {
   local target_user
   local current_shell
   local zsh_shell
-  target_user="${SUDO_USER:-${USER:-}}"
-  if [ -z "$target_user" ]; then
-    target_user="$(id -un)"
-  fi
+  target_user="$TARGET_USER"
 
   zsh_shell="$(preferred_zsh_login_shell)"
-  if ! current_shell="$(getent passwd "$target_user" | cut -d: -f7)" || [ -z "$current_shell" ]; then
+  current_shell="$TARGET_SHELL"
+  if [ -z "$current_shell" ]; then
     log_error "Could not determine current shell for user: $target_user"
     exit 1
   fi
@@ -41,8 +43,12 @@ module_zsh() {
 }
 
 preferred_zsh_login_shell() {
+  if [ "${DRY_RUN:-0}" = 1 ]; then
+    printf '%s\n' /usr/bin/zsh
+    return 0
+  fi
   local candidate
-  for candidate in /usr/bin/zsh /bin/zsh "$(command -v zsh)"; do
+  for candidate in /usr/bin/zsh /bin/zsh "$(command -v zsh || true)"; do
     if [ -x "$candidate" ] && grep -Fxq "$candidate" /etc/shells; then
       printf "%s\n" "$candidate"
       return 0

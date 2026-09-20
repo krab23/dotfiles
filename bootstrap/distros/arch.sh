@@ -2,53 +2,19 @@
 
 set -euo pipefail
 
-distro_setup_locale() {
-  local locale_name="${BOOTSTRAP_LOCALE:-en_US.UTF-8}"
-  local locale_entry="${BOOTSTRAP_LOCALE_GEN_ENTRY:-${locale_name} UTF-8}"
-  local locale_conf="/etc/locale.conf"
-
-  log_info "Configuring locale: $locale_name"
-
-  if [ "${DRY_RUN:-0}" = "1" ]; then
-    printf "[dry-run] ensure /etc/locale.gen contains: %s\n" "$locale_entry"
-    printf "[dry-run] locale-gen\n"
-    printf "[dry-run] write %s: LANG=%s\n" "$locale_conf" "$locale_name"
-    return 0
-  fi
-
-  ensure_locale_gen_entry "$locale_entry"
-  run_sudo locale-gen
-  printf "LANG=%s\n" "$locale_name" | run_sudo tee "$locale_conf" >/dev/null
-}
-
-ensure_locale_gen_entry() {
-  local locale_entry="$1"
-  local locale_gen="/etc/locale.gen"
-  local escaped_entry="${locale_entry//./\\.}"
-
-  if grep -Eq "^[#[:space:]]*${escaped_entry}$" "$locale_gen"; then
-    run_sudo sed -i "s|^[#[:space:]]*${escaped_entry}$|${locale_entry}|" "$locale_gen"
-  elif ! grep -Fxq "$locale_entry" "$locale_gen"; then
-    printf "%s\n" "$locale_entry" | run_sudo tee -a "$locale_gen" >/dev/null
-  fi
-}
-
-distro_install_base_packages() {
-  pkg_install base-devel ca-certificates curl git ripgrep zsh
-}
-
 distro_install_docker() {
-  if command_exists docker; then
-    log_info "Docker already installed; skipping engine install."
-    return 0
-  fi
-
   log_info "Installing Docker packages (Arch family)."
-  pkg_install docker docker-compose
-  log_warn "If needed, enable Docker manually: sudo systemctl enable --now docker"
+  pkg_install docker docker-compose docker-buildx
 }
 
 distro_install_nvim() {
+  [ "${CONFIG_ONLY:-0}" != "1" ] || return 0
+  source "$DOTFILES_ROOT/bootstrap/lib/nvim.sh"
+  nvim_require_arch || return 1
   log_info "Installing Neovim packages (Arch family)."
-  pkg_install neovim tree-sitter-cli
+  pkg_install ca-certificates curl git ripgrep base-devel nodejs npm python python-pip python-pynvim tar gzip unzip xz tree-sitter-cli
+  if ! nvim_version_ok nvim 0.12.0; then
+    pkg_install neovim
+  fi
+  nvim_check_tools
 }

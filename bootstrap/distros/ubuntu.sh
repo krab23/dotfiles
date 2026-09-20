@@ -2,16 +2,7 @@
 
 set -euo pipefail
 
-distro_install_base_packages() {
-  pkg_install ca-certificates curl git gnupg lsb-release ripgrep zsh
-}
-
 distro_install_docker() {
-  if command_exists docker; then
-    log_info "Docker already installed; skipping engine install."
-    return 0
-  fi
-
   log_info "Installing Docker Engine (Ubuntu family)."
   pkg_install ca-certificates curl gnupg lsb-release
 
@@ -21,7 +12,14 @@ distro_install_docker() {
     if [ "${DRY_RUN:-0}" = "1" ]; then
       printf "[dry-run] curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg\n"
     else
-      curl -fsSL https://download.docker.com/linux/ubuntu/gpg | run_sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg
+      local armored_key key_file
+      make_temp
+      armored_key="$TEMP_FILE"
+      make_temp
+      key_file="$TEMP_FILE"
+      curl -fsSL -o "$armored_key" https://download.docker.com/linux/ubuntu/gpg
+      gpg --batch --dearmor < "$armored_key" > "$key_file"
+      run_sudo install -m 0644 "$key_file" /etc/apt/keyrings/docker.gpg
     fi
     run_sudo chmod a+r /etc/apt/keyrings/docker.gpg
   fi
@@ -32,7 +30,11 @@ distro_install_docker() {
   arch="$(ubuntu_package_arch)"
   codename="$(
     . /etc/os-release
-    printf "%s" "${VERSION_CODENAME:-noble}"
+    if [ "${DRY_RUN:-0}" = 1 ] && [ "${ID:-}" != ubuntu ] && [ -z "${UBUNTU_CODENAME:-}" ]; then
+      printf '<ubuntu-codename>'
+      exit 0
+    fi
+    printf "%s" "${UBUNTU_CODENAME:-${VERSION_CODENAME:?Missing VERSION_CODENAME in /etc/os-release}}"
   )"
   repo_line="deb [arch=${arch} signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu ${codename} stable"
 
@@ -47,21 +49,11 @@ distro_install_docker() {
 }
 
 distro_install_nvim() {
-  if command_exists nvim; then
-    log_info "Neovim already installed; skipping binary install."
-    return 0
-  fi
-
-  log_info "Installing Neovim AppImage (Ubuntu family)."
-  pkg_install fuse libfuse2
-
-  local appimage
-  appimage="$DOTFILES_ROOT/bin/nvim.appimage"
-  ensure_dir "$DOTFILES_ROOT/bin"
-
-  run_cmd curl -L -o "$appimage" "https://github.com/neovim/neovim/releases/latest/download/nvim-linux-x86_64.appimage"
-  run_cmd chmod u+x "$appimage"
-  run_sudo ln -sfn "$appimage" /usr/local/bin/nvim
+  [ "${CONFIG_ONLY:-0}" != "1" ] || return 0
+  source "$DOTFILES_ROOT/bootstrap/lib/nvim.sh"
+  nvim_require_arch || return 1
+  pkg_install ca-certificates curl git ripgrep build-essential nodejs npm python3 python3-pip python3-venv python3-pynvim tar gzip unzip xz-utils libtinfo6 libstdc++6 zlib1g libzstd1 libxml2 libedit2
+  nvim_install_debian
 }
 
 ubuntu_package_arch() {

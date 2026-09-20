@@ -1,0 +1,13 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "subagent_depth": 1,
+  "permission": {
+    "task": {
+      "*": "deny",
+      "luna": "allow",
+      "sol-medium": "allow",
+      "sol-high": "allow",
+      "astra-complex": "allow"
+    }
+  }
+}

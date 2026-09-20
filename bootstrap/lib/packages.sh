@@ -5,6 +5,7 @@ set -euo pipefail
 PKG_DB_UPDATED=0
 
 pkg_update() {
+  [ "${CONFIG_ONLY:-0}" = 0 ] || return 0
   if [ "$PKG_DB_UPDATED" = "1" ]; then
     return 0
   fi
@@ -14,7 +15,7 @@ pkg_update() {
       run_sudo apt-get update
       ;;
     arch)
-      run_sudo pacman -Sy --noconfirm
+      run_sudo pacman -Syu --noconfirm
       ;;
     *)
       log_error "pkg_update called with unsupported distro: $DISTRO_FAMILY"
@@ -26,6 +27,7 @@ pkg_update() {
 }
 
 pkg_install() {
+  [ "${CONFIG_ONLY:-0}" = 0 ] || return 0
   if [ "$#" -eq 0 ]; then
     return 0
   fi
