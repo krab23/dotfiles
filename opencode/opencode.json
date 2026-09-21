@@ -1,5 +1,4 @@
 {
   "$schema": "https://opencode.ai/config.json",
-  "permission": "allow",
-  "subagent_depth": 1
+  "permission": "allow"
 }

@@ -2,6 +2,15 @@
 
 set -euo pipefail
 
+distro_install_opencode() {
+  [ "${CONFIG_ONLY:-0}" != 1 ] || return 0
+  source "$DOTFILES_ROOT/bootstrap/lib/opencode.sh"
+  if ! command_exists opencode && [ ! -x "$HOME/.opencode/bin/opencode" ]; then
+    pkg_install curl ca-certificates tar gzip
+  fi
+  opencode_install_upstream
+}
+
 distro_install_docker() {
   log_info "Installing Docker Engine (Debian family)."
   pkg_install ca-certificates curl gnupg lsb-release

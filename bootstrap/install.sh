@@ -22,7 +22,7 @@ usage() {
 Usage: bootstrap/install.sh [options]
 
 Options:
-  --only <csv>               Run only selected modules (git,zsh,starship,nvim,docker)
+  --only <csv>               Run only selected modules (git,zsh,starship,nvim,docker,opencode)
   --skip <csv>               Skip selected modules
   --distro <debian|ubuntu|arch>
                              Override distro detection
@@ -87,9 +87,10 @@ source "$SCRIPT_DIR/modules/zsh.sh"
 source "$SCRIPT_DIR/modules/starship.sh"
 source "$SCRIPT_DIR/modules/nvim.sh"
 source "$SCRIPT_DIR/modules/docker.sh"
+source "$SCRIPT_DIR/modules/opencode.sh"
 
 if [ "$DRY_RUN" = 0 ] && [ "$CONFIG_ONLY" = 0 ]; then
-  for module in git zsh starship nvim docker; do
+  for module in git zsh starship nvim docker opencode; do
     if module_selected "$module"; then
       if ! command_exists sudo; then
         log_error "sudo is required for installation. Install/configure sudo, then run as your normal user."
@@ -116,5 +117,6 @@ run_module zsh
 run_module starship
 run_module nvim
 run_module docker
+run_module opencode
 
 log_info "Bootstrap complete."

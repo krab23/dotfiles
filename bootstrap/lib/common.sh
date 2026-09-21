@@ -66,8 +66,8 @@ validate_module_csv() {
   IFS=, read -r -a items <<< "$csv"
   for item in "${items[@]}"; do
     case "$item" in
-      git|zsh|starship|nvim|docker) ;;
-      *) log_error "Unknown module: $item (choose git,zsh,starship,nvim,docker)"; exit 1 ;;
+      git|zsh|starship|nvim|docker|opencode) ;;
+      *) log_error "Unknown module: $item (choose git,zsh,starship,nvim,docker,opencode)"; exit 1 ;;
     esac
   done
 }

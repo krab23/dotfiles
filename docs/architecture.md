@@ -2,12 +2,13 @@
 
 `bootstrap/install.sh` is the single entrypoint.
 
-It composes five modules in dependency-independent order:
+It composes six modules in dependency-independent order:
 - `git`
 - `zsh`
 - `starship`
 - `nvim`
 - `docker`
+- `opencode`
 
 Flow:
 1. Parse and validate options/module lists.
@@ -23,6 +24,8 @@ Common helpers:
 - `bootstrap/lib/distro_detect.sh`: distro detection/validation
 - `bootstrap/lib/nvim.sh`: pinned archive downloads with SHA256 verification,
   executable selection, version checks, and headless provisioning entry points
+- `bootstrap/lib/opencode.sh`: user-local upstream installation for Debian/Ubuntu;
+  distro hooks own dependencies and Arch's native package installation
 
 ## Execution modes
 
@@ -54,6 +57,16 @@ and Mason installations and propagates failures. `nvim/lua/tooling.lua` declares
 the languages and tools; `nvim/lazy-lock.json` pins plugins. Provisioning uses a
 copy of the lockfile so it cannot rewrite the checked-in source of truth. Mason
 tool releases follow the live registry; already installed tools are retained.
+
+## OpenCode provisioning
+
+The module links `opencode/opencode.json` into the XDG config directory with
+global `"permission": "allow"`. It uses the standard backup behavior for an existing
+JSON config and leaves other files in the OpenCode config directory in place.
+Project/agent rules and an existing global JSONC config can override the default.
+Arch uses its native package; Debian/Ubuntu use the official installer with
+`--no-modify-path`, reusing an executable on PATH or at `~/.opencode/bin/opencode`.
+The zsh configuration already includes that user-local bin directory.
 
 ## Extending and verifying
 

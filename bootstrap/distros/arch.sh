@@ -2,6 +2,11 @@
 
 set -euo pipefail
 
+distro_install_opencode() {
+  [ "${CONFIG_ONLY:-0}" != 1 ] || return 0
+  pkg_install opencode
+}
+
 distro_install_docker() {
   log_info "Installing Docker packages (Arch family)."
   pkg_install docker docker-compose docker-buildx
