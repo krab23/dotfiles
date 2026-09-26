@@ -3,6 +3,7 @@ description: Moderate bounded implementation or small refactor with defined inte
 mode: subagent
 model: openai/gpt-5.6-sol
 variant: medium
+reasoningEffort: medium
 permission:
   task: deny
 ---

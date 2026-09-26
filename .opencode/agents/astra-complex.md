@@ -3,6 +3,7 @@ description: Multi-step complex implementation needing its own plan and interdep
 mode: subagent
 model: openai/gpt-6-astra
 variant: high
+reasoningEffort: high
 permission:
   task: deny
 ---

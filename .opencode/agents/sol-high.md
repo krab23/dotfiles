@@ -3,6 +3,7 @@ description: Complex but bounded implementation with subtle cross-file or compat
 mode: subagent
 model: openai/gpt-5.6-sol
 variant: high
+reasoningEffort: high
 permission:
   task: deny
 ---

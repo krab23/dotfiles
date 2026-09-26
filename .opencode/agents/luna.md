@@ -3,6 +3,7 @@ description: Low-complexity implementation or targeted lookup with a clear appro
 mode: subagent
 model: openai/gpt-5.6-luna
 variant: low
+reasoningEffort: low
 permission:
   task: deny
 ---
