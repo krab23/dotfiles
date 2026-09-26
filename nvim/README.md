@@ -140,13 +140,19 @@ Neovim's built-in completion, available via `<C-x><C-o>`.
   interactive and is not performed by bootstrap. The locked plugin uses npx to
   acquire its language server on first use; that download is also deferred.
   Check `:Copilot status` / `:Copilot log` if suggestions do not appear.
-- WSL uses `clip.exe` and `powershell.exe` only if both are executable and the
-  environment is actually WSL. Enable Windows interop/PATH integration to use it.
+- WSL uses `clip.exe` and `powershell.exe` when both are on PATH and a bounded
+  PowerShell probe confirms Windows interop works. Commands bypass the shell.
+  If interop is unavailable, it uses a graphical provider or OSC52 copying.
+  For `cannot execute binary file` errors, try `powershell.exe -NoProfile
+  -NonInteractive -Command 'exit 0'` in WSL. If that also fails, check that
+  `/etc/wsl.conf` has `[interop]` with `enabled=true` and `appendWindowsPath=true`;
+  after changing it, run `wsl --shutdown` from Windows and reopen WSL.
 - Native Linux uses Neovim's provider detection. Install `wl-clipboard` for
   Wayland or `xclip`/`xsel` for X11 if your desktop does not already provide one.
-- SSH without an available graphical provider uses OSC52 copying. Your local
-  terminal (and tmux, if used) must permit OSC52. Pasting reads Neovim's register
-  cache; use the terminal's paste shortcut for the local system clipboard.
+- SSH (or WSL without working interop) without a graphical provider uses OSC52
+  copying. Your local terminal (and tmux, if used) must permit OSC52. Pasting reads
+  Neovim's register cache; use the terminal's paste shortcut for the local system
+  clipboard.
 - A Nerd Font in the **local terminal** is recommended for file/statusline icons;
   it is optional and does not need installation on a headless VM.
 

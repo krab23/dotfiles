@@ -168,6 +168,8 @@ fake_binary() {
 if command -v nvim >/dev/null; then
   nvim --headless -u NONE -i NONE \
     '+lua for _, f in ipairs(vim.fn.glob(vim.env.DOTFILES_ROOT .. "/nvim/**/*.lua", false, true)) do local fn, err = loadfile(f); if not fn then print(err); vim.cmd("cquit 1") end end' '+qa!'
+  nvim --headless -u NONE -i NONE \
+    '+lua local ok, err = pcall(dofile, vim.env.DOTFILES_ROOT .. "/nvim/tests/clipboard.lua"); if not ok then print(err); vim.cmd("cquit 1") end' '+qa!'
   # Neovim itself continues after init.lua errors. Both provisioning entry points
   # must return failure before touching plugins/tools, including early require errors.
   (

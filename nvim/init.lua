@@ -56,42 +56,9 @@ vim.opt.foldenable= true
 vim.opt.foldlevel=8
 vim.opt.foldlevelstart=8
 
--- Clipboard: Windows interop only when available; otherwise use native detection.
 vim.opt.fileformat = "unix"
 vim.opt.fileformats = "unix,dos"
-
-local is_wsl = vim.env.WSL_DISTRO_NAME or vim.uv.os_uname().release:lower():find("microsoft")
-if is_wsl and vim.fn.executable("clip.exe") == 1 and vim.fn.executable("powershell.exe") == 1 then
-  vim.g.clipboard = {
-    name = "wsl-clip",
-    copy = {
-      ["+"] = "clip.exe",
-      ["*"] = "clip.exe",
-    },
-    paste = {
-      ["+"] = [[powershell.exe -NoProfile -Command "(Get-Clipboard -Raw).Replace(\"`r`n\", \"`n\")"]],
-      ["*"] = [[powershell.exe -NoProfile -Command "(Get-Clipboard -Raw).Replace(\"`r`n\", \"`n\")"]],
-    },
-    cache_enabled = 0,
-  }
-elseif (vim.env.SSH_TTY or vim.env.SSH_CONNECTION)
-  and not ((vim.env.WAYLAND_DISPLAY and vim.fn.executable("wl-copy") == 1 and vim.fn.executable("wl-paste") == 1)
-    or (vim.env.DISPLAY and (vim.fn.executable("xclip") == 1 or vim.fn.executable("xsel") == 1))) then
-  -- OSC52 copy works in supporting SSH terminals. Paste uses the local register
-  -- cache: remote clipboard queries often hang or are blocked by the terminal.
-  local osc52 = require("vim.ui.clipboard.osc52")
-  vim.g.clipboard = {
-    name = "OSC52 (copy only)",
-    copy = { ["+"] = osc52.copy("+"), ["*"] = osc52.copy("*") },
-    paste = {
-      ["+"] = function() return { vim.fn.getreg("", 1, true), vim.fn.getregtype("") } end,
-      ["*"] = function() return { vim.fn.getreg("", 1, true), vim.fn.getregtype("") } end,
-    },
-  }
-end
-if vim.g.clipboard or vim.fn["provider#clipboard#Executable"]() ~= "" then
-  vim.opt.clipboard:append("unnamedplus")
-end
+require("clipboard").setup()
 
 -- Lazy writes its lock during restore/install. Provision from a disposable copy
 -- so failed downloads cannot rewrite the checked-in source of truth.
