@@ -85,13 +85,16 @@ Model/effort selection and Task permissions are runtime configuration. Complexit
 classification, call ceilings, and parent-only review are instructions the parent
 must enforce; they are not automatic credit limits. Availability and actual
 billing depend on the configured provider. After changing agent configuration,
-quit and restart OpenCode. Validate locally with `opencode debug agent <name>`;
+quit and restart OpenCode. Validate locally with `opencode debug config` and
+`opencode debug agents` (OpenCode V2);
 do not spend model calls just to test routing.
 
 ## Verification
 
 Choose checks for the files actually changed:
 
+- Combined offline checks / CI entrypoint: `bash tests/check.sh` (requires Git,
+  Bash, zsh, Neovim, ShellCheck, and Python 3.11+).
 - Shell syntax: `bash -n <script>` or `zsh -n zsh/zshrc`.
 - Bootstrap behavior: `bash tests/bootstrap.sh`.
 - Shell startup behavior: `bash tests/zsh.sh`.

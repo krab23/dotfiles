@@ -45,6 +45,11 @@ refresh apt once, with an additional refresh after adding the Docker repository.
 The distro hooks own package names and repository setup. Locale settings are
 outside the bootstrap's scope.
 
+Debian and Ubuntu wrappers provide distro-specific values and codename policy to
+`bootstrap/distros/apt-family.sh`; shared apt-family installation lives there.
+`BOOTSTRAP_MODULES` in `bootstrap/lib/common.sh` is the ordered registry used by
+help, validation, loading, preflight, and dispatch.
+
 ## Neovim provisioning
 
 The module ensures a compatible Neovim, Tree-sitter CLI, Node/npm/npx, compiler,
@@ -64,14 +69,16 @@ The module links `opencode/opencode.json` into the XDG config directory with
 global `"permission": "allow"`. It uses the standard backup behavior for an existing
 JSON config and leaves other files in the OpenCode config directory in place.
 Project/agent rules and an existing global JSONC config can override the default.
-Arch uses its native package; Debian/Ubuntu use the official installer with
+Arch uses its native package; Debian/Ubuntu use `https://opencode.ai/v2/install` with
 `--no-modify-path`, reusing an executable on PATH or at `~/.opencode/bin/opencode`.
 The zsh configuration already includes that user-local bin directory.
+Existing V1 binaries are reported and retained; migration is a separate explicit
+operation, following upstream guidance for package-managed installations.
 
 ## Extending and verifying
 
 New modules should declare their own dependencies, implement all execution modes,
-and be registered in the entrypoint and module-name validation. Add regression
+and be registered in the shared ordered module list. Add regression
 cases under `tests/` using isolated HOME/XDG directories and mocked privileged
 commands. Never run a real bootstrap on the development host as a test.
 
@@ -80,6 +87,10 @@ Docker behavior; `tests/zsh.sh` checks isolated shell startup; `tests/nvim.sh`
 checks provisioning and failures. Its `--integration` mode additionally downloads
 and exercises the real editor/toolchain. Fresh distro/WSL testing is a separate
 acceptance step, not implied by passing mocks or host integration.
+
+`bash tests/check.sh` is the shared offline entrypoint for local development and
+CI. See [verification](verification.md) for prerequisites and opt-in Debian/Arch
+container acceptance, VM/WSL checks, and startup measurements.
 
 Design goals:
 - Idempotent: repeated runs should be safe.

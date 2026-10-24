@@ -10,5 +10,7 @@
       "astra-complex": "allow"
     }
   },
-  "subagent_depth": 1
+  "experimental": {
+    "subagent_depth": 1
+  }
 }

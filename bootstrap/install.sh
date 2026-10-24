@@ -18,11 +18,11 @@ source "$SCRIPT_DIR/lib/distro_detect.sh"
 source "$SCRIPT_DIR/lib/packages.sh"
 
 usage() {
-  cat <<'EOF'
+  cat <<EOF
 Usage: bootstrap/install.sh [options]
 
 Options:
-  --only <csv>               Run only selected modules (git,zsh,starship,nvim,docker,opencode)
+  --only <csv>               Run only selected modules ($(bootstrap_module_names))
   --skip <csv>               Skip selected modules
   --distro <debian|ubuntu|arch>
                              Override distro detection
@@ -81,16 +81,16 @@ require_supported_distro
 initialize_target_user
 log_info "Detected distro family: $DISTRO_FAMILY"
 
+# Selected adapters/modules are linted separately by tests/check.sh.
+# shellcheck source=/dev/null
 source "$SCRIPT_DIR/distros/${DISTRO_FAMILY}.sh"
-source "$SCRIPT_DIR/modules/git.sh"
-source "$SCRIPT_DIR/modules/zsh.sh"
-source "$SCRIPT_DIR/modules/starship.sh"
-source "$SCRIPT_DIR/modules/nvim.sh"
-source "$SCRIPT_DIR/modules/docker.sh"
-source "$SCRIPT_DIR/modules/opencode.sh"
+for module in "${BOOTSTRAP_MODULES[@]}"; do
+  # shellcheck source=/dev/null
+  source "$SCRIPT_DIR/modules/${module}.sh"
+done
 
 if [ "$DRY_RUN" = 0 ] && [ "$CONFIG_ONLY" = 0 ]; then
-  for module in git zsh starship nvim docker opencode; do
+  for module in "${BOOTSTRAP_MODULES[@]}"; do
     if module_selected "$module"; then
       if ! command_exists sudo; then
         log_error "sudo is required for installation. Install/configure sudo, then run as your normal user."
@@ -112,11 +112,8 @@ run_module() {
   fi
 }
 
-run_module git
-run_module zsh
-run_module starship
-run_module nvim
-run_module docker
-run_module opencode
+for module in "${BOOTSTRAP_MODULES[@]}"; do
+  run_module "$module"
+done
 
 log_info "Bootstrap complete."

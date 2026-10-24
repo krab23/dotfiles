@@ -31,6 +31,8 @@ nvim_version_ok fake_version 0.26.1
 # Config-only must work with no package manager, sudo or Neovim.
 (
   source "$DOTFILES_ROOT/bootstrap/modules/nvim.sh"
+  # Read by the sourced module and distro hooks.
+  # shellcheck disable=SC2034
   CONFIG_ONLY=1
   distro_install_nvim() { log_error 'Unexpected installation'; exit 1; }
   nvim_provision() { log_error 'Unexpected provisioning'; exit 1; }
@@ -43,6 +45,8 @@ nvim_version_ok fake_version 0.26.1
   module_nvim
   [ "$linked" = 1 ]
   for distro in arch debian ubuntu; do
+    # Each adapter is syntax/lint checked separately; the filename is intentional.
+    # shellcheck source=/dev/null
     source "$DOTFILES_ROOT/bootstrap/distros/$distro.sh"
     pkg_install() { log_error 'Unexpected package installation'; exit 1; }
     distro_install_nvim
@@ -51,6 +55,8 @@ nvim_version_ok fake_version 0.26.1
 
 # Dry-run never downloads, creates directories, or runs Neovim.
 (
+  # Read by the sourced archive/provisioning helpers.
+  # shellcheck disable=SC2034
   DRY_RUN=1
   curl() { exit 1; }
   mkdir() { exit 1; }
@@ -60,7 +66,14 @@ nvim_version_ok fake_version 0.26.1
 )
 
 scratch="$(mktemp -d "${TMPDIR:-/tmp}/dotfiles-nvim-test.XXXXXXXX")"
-trap 'rm -rf "$scratch"' EXIT
+cleanup() {
+  if [ "${NVIM_TEST_KEEP:-0}" = 1 ]; then
+    printf 'Retained disposable Neovim environment: %s\n' "$scratch"
+  else
+    rm -rf "$scratch"
+  fi
+}
+trap cleanup EXIT
 export HOME="$scratch/home"
 export XDG_CONFIG_HOME="$HOME/.config" XDG_DATA_HOME="$HOME/.local/share"
 export XDG_STATE_HOME="$HOME/.local/state" XDG_CACHE_HOME="$HOME/.cache"
@@ -170,6 +183,8 @@ if command -v nvim >/dev/null; then
     '+lua for _, f in ipairs(vim.fn.glob(vim.env.DOTFILES_ROOT .. "/nvim/**/*.lua", false, true)) do local fn, err = loadfile(f); if not fn then print(err); vim.cmd("cquit 1") end end' '+qa!'
   nvim --headless -u NONE -i NONE \
     '+lua local ok, err = pcall(dofile, vim.env.DOTFILES_ROOT .. "/nvim/tests/clipboard.lua"); if not ok then print(err); vim.cmd("cquit 1") end' '+qa!'
+  nvim --headless -u NONE -i NONE \
+    '+lua local ok, err = pcall(dofile, vim.env.DOTFILES_ROOT .. "/nvim/tests/tooling.lua"); if not ok then print(err); vim.cmd("cquit 1") end' '+qa!'
   # Neovim itself continues after init.lua errors. Both provisioning entry points
   # must return failure before touching plugins/tools, including early require errors.
   (
@@ -225,5 +240,10 @@ if [ "${1:-}" = --integration ]; then
   nvim_provision
   DOTFILES_NVIM_PROVISION=1 nvim --headless -i NONE \
     '+lua dofile(vim.env.DOTFILES_ROOT .. "/nvim/tests/smoke.lua")'
+  if [ -n "${NVIM_STARTUP_REPORT:-}" ]; then
+    ln -s "$DOTFILES_ROOT/zsh/zshrc" "$HOME/.zshrc"
+    DOTFILES_NVIM_PROVISION=1 python3 "$DOTFILES_ROOT/tests/startup.py" \
+      --label disposable-toolchain --output "$NVIM_STARTUP_REPORT"
+  fi
 fi
 log_info 'Neovim checks passed.'

@@ -1,0 +1,15 @@
+-- Assert the supported feature set independently of the declaration/derivation.
+local tooling = dofile(vim.env.DOTFILES_ROOT .. "/nvim/lua/tooling.lua")
+local function expect(key, values)
+  local actual = vim.deepcopy(tooling[key])
+  table.sort(actual)
+  table.sort(values)
+  assert(vim.deep_equal(actual, values), "Unexpected tooling coverage: " .. key)
+end
+expect("parsers", { "lua", "javascript", "typescript", "tsx", "python", "c", "cpp", "markdown", "markdown_inline" })
+expect("filetypes", { "lua", "javascript", "javascriptreact", "typescript", "typescriptreact", "python", "c", "cpp", "markdown" })
+expect("servers", { "lua_ls", "ts_ls", "pyright", "clangd" })
+expect("packages", { "lua-language-server", "typescript-language-server", "pyright", "clangd", "codelldb", "debugpy" })
+expect("debuggers", { "python", "codelldb" })
+assert(vim.deep_equal(tooling.samples, { { "lua_ls", "lua" }, { "ts_ls", "ts" }, { "pyright", "py" }, { "clangd", "cpp" } }))
+print("Tooling coverage checks passed.")

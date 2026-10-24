@@ -12,6 +12,12 @@ NVIM_NODE_RELEASE=24.21.0
 NVIM_NODE_SHA256=6e1db87ef58b8819e5d5402eff1536491b18edd8eb7bee5ef7897876e88dc5ff
 NVIM_NODE_URL="https://nodejs.org/dist/v$NVIM_NODE_RELEASE/node-v$NVIM_NODE_RELEASE-linux-x64.tar.gz"
 
+# Compatibility floors are distinct from the fallback archive release pins.
+NVIM_MIN_VERSION=0.12.0
+NVIM_TS_MIN_VERSION=0.26.1
+NVIM_NODE_MIN_VERSION=22.0.0
+NVIM_NPM_MIN_VERSION=10.0.0
+
 # Shared by the distro hooks; all non-package files belong to the invoking user.
 nvim_require_arch() {
   if [ "$(uname -s)" != Linux ] || [ "$(uname -m)" != x86_64 ]; then
@@ -32,7 +38,8 @@ nvim_version_ok() {
 
 # npm and npx must actually run under the selected Node, not merely exist.
 nvim_node_ok() {
-  nvim_version_ok node 22.0.0 && nvim_version_ok npm 10.0.0 && nvim_version_ok npx 10.0.0
+  nvim_version_ok node "$NVIM_NODE_MIN_VERSION" &&
+    nvim_version_ok npm "$NVIM_NPM_MIN_VERSION" && nvim_version_ok npx "$NVIM_NPM_MIN_VERSION"
 }
 
 nvim_link_archive() {
@@ -120,8 +127,8 @@ nvim_align_binary() {
 nvim_install_debian() {
   nvim_require_arch || return 1
   local selected_nvim='' selected_ts='' selected_node='' selected_npm='' selected_npx=''
-  if nvim_version_ok nvim 0.12.0; then selected_nvim="$(type -P nvim)"; fi
-  if nvim_version_ok tree-sitter 0.26.1; then selected_ts="$(type -P tree-sitter)"; fi
+  if nvim_version_ok nvim "$NVIM_MIN_VERSION"; then selected_nvim="$(type -P nvim)"; fi
+  if nvim_version_ok tree-sitter "$NVIM_TS_MIN_VERSION"; then selected_ts="$(type -P tree-sitter)"; fi
   if nvim_node_ok; then
     selected_node="$(type -P node)" selected_npm="$(type -P npm)" selected_npx="$(type -P npx)"
   fi
@@ -131,8 +138,8 @@ nvim_install_debian() {
   nvim_align_binary node "$selected_node" || return 1
   nvim_align_binary npm "$selected_npm" || return 1
   nvim_align_binary npx "$selected_npx" || return 1
-  if ! nvim_version_ok nvim 0.12.0; then nvim_install_pinned nvim || return 1; fi
-  if ! nvim_version_ok tree-sitter 0.26.1; then nvim_install_pinned tree-sitter || return 1; fi
+  if ! nvim_version_ok nvim "$NVIM_MIN_VERSION"; then nvim_install_pinned nvim || return 1; fi
+  if ! nvim_version_ok tree-sitter "$NVIM_TS_MIN_VERSION"; then nvim_install_pinned tree-sitter || return 1; fi
   if ! nvim_node_ok; then nvim_install_pinned node || return 1; fi
   hash -r
   nvim_check_tools
@@ -141,7 +148,7 @@ nvim_install_debian() {
 nvim_check_tools() {
   [ "${DRY_RUN:-0}" != 1 ] || return 0
   local entry binary minimum
-  for entry in 'nvim 0.12.0' 'tree-sitter 0.26.1' 'node 22.0.0'; do
+  for entry in "nvim $NVIM_MIN_VERSION" "tree-sitter $NVIM_TS_MIN_VERSION" "node $NVIM_NODE_MIN_VERSION"; do
     read -r binary minimum <<< "$entry"
     if ! nvim_version_ok "$binary" "$minimum"; then
       log_error "$binary >= $minimum required by this Neovim setup; check PATH and distro updates."
@@ -149,7 +156,7 @@ nvim_check_tools() {
     fi
   done
   if ! nvim_node_ok; then
-    log_error "Working Node >= 22 with npm/npx >= 10 required; check PATH."
+    log_error "Working Node >= $NVIM_NODE_MIN_VERSION with npm/npx >= $NVIM_NPM_MIN_VERSION required; check PATH."
     return 1
   fi
 }

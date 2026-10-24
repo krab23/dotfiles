@@ -4,7 +4,7 @@ local ok, err = xpcall(function()
     assert(vim.lsp.is_enabled(server), server .. " is not enabled")
     assert(vim.fn.executable(vim.lsp.config[server].cmd[1]) == 1, server .. " executable missing")
   end
-  for _, sample in ipairs({ { "lua_ls", "lua" }, { "ts_ls", "ts" }, { "pyright", "py" }, { "clangd", "cpp" } }) do
+  for _, sample in ipairs(require("tooling").samples) do
     local project = vim.fn.tempname()
     vim.fn.mkdir(project .. "/.git", "p")
     vim.fn.writefile({ "{}" }, project .. "/package.json")
@@ -17,7 +17,15 @@ local ok, err = xpcall(function()
     for _, client in ipairs(vim.lsp.get_clients()) do
       client:stop()
     end
-    assert(vim.wait(10000, function() return #vim.lsp.get_clients() == 0 end, 100), "LSP shutdown timed out")
+    -- Attachment is under test, not each upstream server's shutdown behavior.
+    -- Some servers leave child processes running after a graceful request.
+    if not vim.wait(5000, function() return #vim.lsp.get_clients() == 0 end, 100) then
+      for _, client in ipairs(vim.lsp.get_clients()) do
+        print("Force-stopping test client: " .. client.name)
+        client:stop(true)
+      end
+    end
+    assert(vim.wait(5000, function() return #vim.lsp.get_clients() == 0 end, 100), "LSP test cleanup timed out")
   end
   local dap = require("dap")
   local python = vim.system({ dap.adapters.python.command, "-c", "import debugpy; print(debugpy.__version__)" }):wait(10000)
@@ -28,6 +36,7 @@ local ok, err = xpcall(function()
   assert(lldb.code == 0, "LLDB runtime failed: " .. (lldb.stderr or ""))
   assert(vim.fn.executable(dap.adapters.codelldb.executable.command) == 1)
 end, debug.traceback)
+pcall(function() require("tooling_report").print() end)
 if not ok then
   vim.api.nvim_err_writeln(err)
   vim.cmd("cquit 1")

@@ -8,6 +8,7 @@ local function run(fn)
     assert(vim.v.errmsg == "", "Neovim startup error: " .. vim.v.errmsg)
     fn()
   end, debug.traceback)
+  pcall(function() require("tooling_report").print() end)
   if not ok then
     vim.api.nvim_err_writeln(err)
     vim.cmd("cquit 1")

@@ -6,7 +6,7 @@ setup_docker_prune_cron() {
   local prune_command="/usr/bin/docker system prune -f"
   local schedule="0 3 * * *"
   local entry="${schedule} ${prune_command}"
-  local tmp
+  local tmp error_tmp error_output cron_user status
 
   if [ "${DRY_RUN:-0}" = 1 ]; then
     printf '[dry-run] ensure user crontab contains: %s\n' "$entry"
@@ -20,15 +20,35 @@ setup_docker_prune_cron() {
 
   make_temp
   tmp="$TEMP_FILE"
-  (crontab -l 2>/dev/null || true) >"$tmp"
+  make_temp
+  error_tmp="$TEMP_FILE"
 
-  if grep -Fq "$prune_command" "$tmp"; then
+  if LC_ALL=C crontab -l >"$tmp" 2>"$error_tmp"; then
+    :
+  else
+    status=$?
+    cron_user="${TARGET_USER:-$(id -un)}"
+    error_output="$(cat "$error_tmp")"
+    if [ "$status" -eq 1 ] && [ "$error_output" = "no crontab for $cron_user" ]; then
+      : >"$tmp"
+    else
+      log_error "Unable to read existing crontab (exit $status); refusing to replace it${error_output:+: $error_output}"
+      return 1
+    fi
+  fi
+
+  if grep -Fxq -- "$entry" "$tmp"; then
     log_info "Docker prune cron already present; skipping."
     return 0
   fi
 
   log_info "Adding docker prune cron: $entry"
-  run_cmd bash -c "printf '%s\n' \"\$1\" >>\"\$2\"" -- "$entry" "$tmp"
+  # crontab -l normally terminates every line, but ensure a separator without
+  # modifying any existing bytes if an implementation omits the final newline.
+  if [ -s "$tmp" ] && [ -n "$(tail -c 1 "$tmp")" ]; then
+    printf '\n' >>"$tmp"
+  fi
+  printf '%s\n' "$entry" >>"$tmp"
   run_cmd crontab "$tmp"
 }
 

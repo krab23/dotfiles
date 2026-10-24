@@ -114,8 +114,11 @@ for diagnostics.
 | Python | `pyright` | debugpy |
 | C / C++ | `clangd` | CodeLLDB (launch or attach) |
 
-Tree-sitter also includes Markdown and inline Markdown. The server/parser/package
-lists live in `lua/tooling.lua`. Servers are explicitly enabled after Mason and
+Tree-sitter also includes Markdown and inline Markdown. Language declarations in
+`lua/tooling.lua` specify parsers, filetypes, LSP/package/sample mappings, and DAP
+identifiers; runtime lists and integration samples are derived from them.
+Language-specific LSP settings and debugger launch configurations remain in
+`lua/plugins.lua`. Servers are explicitly enabled after Mason and
 lspconfig setup, without discovering an arbitrary list of previously installed
 servers. DAP paths use Mason v2's configured installation root.
 
@@ -171,3 +174,24 @@ Offline regressions model Debian Node 20, incomplete npm/npx, preservation of a
 newer toolchain, conflicting local Neovim binaries, and failed initialization.
 Integration tests require network access and the system compiler/Python
 prerequisites; they use the downloaded Node even when the host has a newer one.
+
+## Updating the toolchain
+
+1. Update fallback archive versions and SHA256 pins together in
+   `bootstrap/lib/nvim.sh`, using the upstream release digests / Node
+   `SHASUMS256.txt`. Its `*_MIN_VERSION` constants control executable reuse;
+   change these only when compatibility requirements change. If Neovim's minimum
+   changes, update the early Lua version guard and this guide too.
+2. Update plugin commits deliberately with `:Lazy update`, inspect
+   `lazy-lock.json`, and review upstream minimum-runtime requirements.
+3. Run `bash tests/check.sh`, then `bash tests/nvim.sh --integration`. Keep the
+   output with the tested commit and distro. Provisioning and smoke tests print
+   executable versions and Mason receipt source IDs (including installed package
+   versions), on both success and failure when available.
+4. Update this guide's version summary and record the tested target environments.
+   Compatible newer installations must still be reused; a fallback pin is not a
+   forced downgrade. Mason packages remain registry-resolved rather than locked.
+
+Use `NVIM_TEST_KEEP=1` for an integration environment you need to inspect after a
+failure. See [verification](../docs/verification.md) for retained-environment,
+container acceptance, and startup measurement procedures.

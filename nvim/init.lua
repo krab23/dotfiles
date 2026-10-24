@@ -78,17 +78,7 @@ require("lazy").setup("plugins", {
 })
 
 vim.api.nvim_create_autocmd("FileType", {
-  pattern = {
-    "lua",
-    "javascript",
-    "javascriptreact",
-    "typescript",
-    "typescriptreact",
-    "python",
-    "c",
-    "cpp",
-    "markdown",
-  },
+  pattern = require("tooling").filetypes,
   callback = function()
     pcall(vim.treesitter.start)
     vim.wo.foldexpr="v:lua.vim.treesitter.foldexpr()"

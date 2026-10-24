@@ -2,6 +2,15 @@
 
 set -euo pipefail
 
+# The order here is the bootstrap execution order. Keep module discovery simple:
+# every registered name maps to bootstrap/modules/<name>.sh and module_<name>.
+BOOTSTRAP_MODULES=(git zsh starship nvim docker opencode)
+
+bootstrap_module_names() {
+  local IFS=,
+  printf '%s' "${BOOTSTRAP_MODULES[*]}"
+}
+
 timestamp() {
   date +"%Y-%m-%d %H:%M:%S"
 }
@@ -39,13 +48,13 @@ initialize_target_user() {
     log_error "Run bootstrap as your normal login user, without sudo. It uses sudo only for system installation; running as root would configure root's home."
     exit 1
   fi
-  local entry password uid gid gecos account_home
+  local entry _password uid _gid _gecos account_home
   TARGET_USER="$(id -un)"
   if ! entry="$(getent passwd "$TARGET_USER")"; then
     log_error "Cannot resolve the current user's passwd entry: $TARGET_USER"
     exit 1
   fi
-  IFS=: read -r TARGET_USER password uid gid gecos account_home TARGET_SHELL <<< "$entry"
+  IFS=: read -r TARGET_USER _password uid _gid _gecos account_home TARGET_SHELL <<< "$entry"
   if [ -z "$account_home" ] || [ "$account_home" != "${HOME:-}" ] || [ "$uid" != "$(id -u)" ]; then
     log_error "HOME must match the current user's passwd home ($account_home). Run from a normal login session."
     exit 1
@@ -56,7 +65,7 @@ initialize_target_user() {
 }
 
 validate_module_csv() {
-  local csv="$1" item
+  local csv="$1" item module registered
   local -a items
   [ -n "$csv" ] || return 0
   if [[ ! "$csv" =~ ^[a-z]+(,[a-z]+)*$ ]]; then
@@ -65,10 +74,17 @@ validate_module_csv() {
   fi
   IFS=, read -r -a items <<< "$csv"
   for item in "${items[@]}"; do
-    case "$item" in
-      git|zsh|starship|nvim|docker|opencode) ;;
-      *) log_error "Unknown module: $item (choose git,zsh,starship,nvim,docker,opencode)"; exit 1 ;;
-    esac
+    registered=0
+    for module in "${BOOTSTRAP_MODULES[@]}"; do
+      if [ "$item" = "$module" ]; then
+        registered=1
+        break
+      fi
+    done
+    if [ "$registered" = 0 ]; then
+      log_error "Unknown module: $item (choose $(bootstrap_module_names))"
+      exit 1
+    fi
   done
 }
 

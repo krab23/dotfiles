@@ -104,6 +104,8 @@ message; completed steps are generally reused.
 
   An existing `.gitconfig` is backed up, not merged automatically. Copy any
   identity, signing, or credential configuration you need into the local file.
+  Git uses the shell's editor/default; set `[core] editor = ...` in the local
+  file for a Git-specific override. Git-only installation does not require Neovim.
 - Put machine-specific shell settings and aliases in `~/.zshrc.local`, which is
   loaded last. Optional Starship, Oh My Zsh, and Google Cloud SDK integrations are
   guarded. Existing `LANG` and `LC_*` settings are preserved. If `LANG` is unset or
@@ -116,10 +118,14 @@ message; completed steps are generally reused.
   Existing `opencode.json` files are backed up, not merged; copy any provider/model
   settings you need from the backup. Quit and restart OpenCode after config changes.
   The repository-root `opencode.json` is the separate project configuration.
-- Arch installs the `opencode` package. Debian/Ubuntu use the official installer
+- Arch installs the `opencode` package. Debian/Ubuntu use the official V2 installer
+  at `https://opencode.ai/v2/install`
   under `~/.opencode/bin`, reusing an existing installation. The zsh config already
   adds that directory to PATH; with another shell, add it yourself or launch
   `~/.opencode/bin/opencode`. The installer runs with `--no-modify-path`.
+  Existing V1 installations are retained and reported, not automatically migrated.
+  Follow the [V2 migration guide](https://opencode.ai/v2/docs/migrate-v1); remove
+  package-managed V1 before using the V2 installer.
 
 Both `C.UTF-8` and `en_US.UTF-8` support Unicode. `en_US.UTF-8` supplies US English regional
 conventions; `C.UTF-8` uses the simpler C conventions with UTF-8 support. `LANG`
@@ -150,9 +156,7 @@ version/checksum pins together in `bootstrap/lib/nvim.sh`; use `:Lazy update`
 deliberately and review `nvim/lazy-lock.json` afterward.
 
 ```sh
-bash tests/bootstrap.sh
-bash tests/zsh.sh
-bash tests/nvim.sh
+bash tests/check.sh
 # Optional: downloads binaries, plugins, parsers and tools into a disposable HOME.
 bash tests/nvim.sh --integration
 git diff --check
@@ -162,6 +166,8 @@ Offline checks use isolated homes and mocked system/network commands. Neovim
 integration verifies real tool installation, LSP attachment, and debugger
 runtimes on the test host. Neither substitutes for a fresh Debian VM or WSL2
 installation test. CI runs the offline checks; network integration is optional.
+See [verification](docs/verification.md) for check dependencies, disposable
+Debian/Arch acceptance runners, the fresh VM/WSL procedure, and startup profiling.
 
 ## Layout
 

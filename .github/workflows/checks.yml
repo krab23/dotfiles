@@ -9,6 +9,10 @@ on:
         description: Download and test the complete Neovim toolchain
         type: boolean
         default: false
+      distro_acceptance:
+        description: Test real install/rerun in disposable Debian 13 and Arch containers
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -23,18 +27,10 @@ jobs:
       - name: Install check prerequisites
         run: |
           sudo apt-get update
-          sudo apt-get install -y zsh neovim
-      - name: Syntax and whitespace
-        shell: bash
-        run: |
-          for script in bootstrap/install.sh bootstrap/lib/*.sh bootstrap/distros/*.sh bootstrap/modules/*.sh tests/*.sh; do
-            bash -n "$script"
-          done
-          zsh -n zsh/zshrc
-          git diff-tree --check --root -r -m HEAD
-      - run: bash tests/bootstrap.sh
-      - run: bash tests/zsh.sh
-      - run: bash tests/nvim.sh
+          sudo apt-get install -y zsh neovim shellcheck python3
+      - run: bash tests/check.sh
+      - name: Commit whitespace
+        run: git diff-tree --check --root -r -m HEAD
       - name: Install integration prerequisites
         if: ${{ github.event_name == 'workflow_dispatch' && inputs.nvim_integration }}
         run: sudo apt-get install -y build-essential python3-venv python3-pip curl ca-certificates tar gzip unzip xz-utils
@@ -42,3 +38,21 @@ jobs:
         if: ${{ github.event_name == 'workflow_dispatch' && inputs.nvim_integration }}
         timeout-minutes: 25
         run: bash tests/nvim.sh --integration
+  distro-acceptance:
+    if: ${{ github.event_name == 'workflow_dispatch' && inputs.distro_acceptance }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        distro: [debian, arch]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install and rerun in disposable container
+        shell: bash
+        run: bash tests/acceptance.sh "${{ matrix.distro }}" |& tee acceptance.log
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: acceptance-${{ matrix.distro }}
+          path: acceptance.log

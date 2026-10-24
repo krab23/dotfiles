@@ -63,6 +63,14 @@ contains 'normal login user'
 if MOCK_HOME=/other install --only git; then fail 'accepted mismatched home'; fi
 contains 'HOME must match'
 no_commands
+install --help
+contains 'Run only selected modules (git,zsh,starship,nvim,docker,opencode)'
+no_commands
+ROOT="$ROOT" bash -c '
+  source "$ROOT/bootstrap/lib/common.sh"
+  [ "$(bootstrap_module_names)" = git,zsh,starship,nvim,docker,opencode ]
+  validate_module_csv "$(bootstrap_module_names)"
+' > "$OUT" 2>&1
 printf 'ok: arguments and account validation precede mutation\n'
 
 for distro in arch debian ubuntu; do
@@ -92,6 +100,49 @@ for distro in arch debian ubuntu; do
 done
 printf 'ok: three distro dry-runs, package plans, no files or mutations\n'
 
+cat > "$SANDBOX/debian-release" <<'EOF'
+ID=debian
+VERSION_CODENAME=bookworm
+EOF
+cat > "$SANDBOX/debian-cross-release" <<'EOF'
+ID=ubuntu
+VERSION_CODENAME=noble
+EOF
+cat > "$SANDBOX/ubuntu-fallback-release" <<'EOF'
+ID=ubuntu
+VERSION_CODENAME=noble
+EOF
+cat > "$SANDBOX/ubuntu-base-release" <<'EOF'
+ID=ubuntu
+VERSION_CODENAME=bookworm
+UBUNTU_CODENAME=jammy
+EOF
+cat > "$SANDBOX/ubuntu-cross-release" <<'EOF'
+ID=debian
+VERSION_CODENAME=bookworm
+EOF
+cat > "$SANDBOX/ubuntu-cross-base-release" <<'EOF'
+ID=debian
+VERSION_CODENAME=bookworm
+UBUNTU_CODENAME=jammy
+EOF
+for case_spec in \
+  'debian debian-release bookworm' \
+  'debian debian-cross-release <debian-codename>' \
+  'ubuntu ubuntu-fallback-release noble' \
+  'ubuntu ubuntu-base-release jammy' \
+  'ubuntu ubuntu-cross-release <ubuntu-codename>' \
+  'ubuntu ubuntu-cross-base-release jammy'; do
+  read -r distro release expected <<< "$case_spec"
+  ROOT="$ROOT" DISTRO="$distro" RELEASE="$SANDBOX/$release" EXPECTED="$expected" bash -c '
+    source "$ROOT/bootstrap/lib/common.sh"
+    source "$ROOT/bootstrap/distros/$DISTRO.sh"
+    DRY_RUN=1 APT_FAMILY_OS_RELEASE_FILE="$RELEASE"
+    [ "$(distro_docker_codename)" = "$EXPECTED" ]
+  ' > "$OUT" 2>&1
+done
+printf 'ok: Debian and Ubuntu native, fallback and cross-distro codename policies\n'
+
 install --distro arch --config-only --enable-docker-prune
 no_commands
 [ "$(readlink "$HOME/.gitconfig")" = "$ROOT/git/gitconfig" ] || fail 'git link'
@@ -101,10 +152,32 @@ no_commands
 [ "$(readlink "$HOME/.config/opencode/opencode.json")" = "$ROOT/opencode/opencode.json" ] || fail 'opencode link'
 [ ! -e "$HOME/.opencode" ] || fail 'config-only installed OpenCode'
 [ ! -e "$HOME/.oh-my-zsh" ] || fail 'config-only installed Oh My Zsh'
+for distro in debian ubuntu; do
+  install --distro "$distro" --config-only --enable-docker-prune
+  no_commands
+  contains 'Symlink already correct'
+done
 install --distro arch --config-only
 no_commands
 contains 'Symlink already correct'
-printf 'ok: config-only links and idempotence without sudo\n'
+printf 'ok: three distro config-only links and idempotence without sudo\n'
+
+rm -f "$HOME/.gitconfig.local"
+[ "$(env -u GIT_EDITOR -u GIT_CONFIG_GLOBAL -u GIT_CONFIG_SYSTEM GIT_CONFIG_COUNT=0 GIT_CONFIG_NOSYSTEM=1 VISUAL=/bin/echo EDITOR=/bin/echo git -C "$SANDBOX" var GIT_EDITOR)" = /bin/echo ] || fail 'Git ignored environment editor fallback'
+cat > "$HOME/.gitconfig.local" <<'EOF'
+[core]
+  editor = /bin/true
+EOF
+[ "$(env -u GIT_EDITOR -u GIT_CONFIG_GLOBAL -u GIT_CONFIG_SYSTEM GIT_CONFIG_COUNT=0 GIT_CONFIG_NOSYSTEM=1 VISUAL=/bin/echo EDITOR=/bin/echo git -C "$SANDBOX" var GIT_EDITOR)" = /bin/true ] || fail 'local Git editor did not override environment'
+rm -f "$HOME/.gitconfig.local"
+if grep -Eq '^[[:space:]]*editor[[:space:]]*=' "$ROOT/git/gitconfig"; then fail 'shared Git config forces an editor'; fi
+printf 'ok: Git editor follows the environment and local override\n'
+
+install --distro arch --only git,zsh --skip git --config-only
+no_commands
+contains 'Skipping module: git'
+contains 'Running module: zsh'
+printf 'ok: registry-driven selection keeps skip precedence\n'
 
 XDG_CONFIG_HOME="$HOME/custom config" install --distro debian --only nvim,starship,opencode --config-only
 no_commands
@@ -178,7 +251,7 @@ for distro in debian ubuntu; do
     DOTFILES_ROOT="$ROOT" DRY_RUN=0 CONFIG_ONLY=0
     command_exists() { return 1; }
     curl() {
-      [ "$*" = "-fsSL -o $TEMP_FILE https://opencode.ai/install" ] || return 1
+      [ "$*" = "-fsSL -o $TEMP_FILE https://opencode.ai/v2/install" ] || return 1
       printf "%s\n" \
         "set -eu" \
         "[ \"\$*\" = --no-modify-path ]" \
@@ -192,13 +265,19 @@ for distro in debian ubuntu; do
     pkg_install() { exit 91; }
     curl() { exit 92; }
     module_opencode
+    # An existing V1 binary is reported and preserved, never silently migrated.
+    printf "%s\n" "#!/bin/sh" "echo 1.18.32" > "$HOME/.opencode/bin/opencode"
+    module_opencode
+    [ "$("$HOME/.opencode/bin/opencode" --version)" = 1.18.32 ]
     rm "$HOME/.opencode/bin/opencode"
     # An installation elsewhere on PATH is reused too.
     command_exists() { [ "$1" = opencode ]; }
+    opencode() { printf "opencode v2.0.18\n"; }
     module_opencode
   ' > "$OUT" 2>&1
   grep -Fxq 'sudo env DEBIAN_FRONTEND=noninteractive apt-get install -y curl ca-certificates tar gzip' "$MOCK_LOG" || fail 'OpenCode upstream dependencies missing'
   contains 'OpenCode already installed'
+  contains 'Existing OpenCode V1 is retained'
   [ -z "$(ls -A "$TMPDIR")" ] || fail 'OpenCode installer leaked temp'
   : > "$MOCK_LOG"
 done
@@ -231,6 +310,67 @@ ROOT="$ROOT" bash -c '
 contains 'systemctl enable --now docker.service'
 contains 'Docker prune cron disabled by default'
 printf 'ok: existing Docker CLI still ensures components, local group, systemd and opt-in prune\n'
+
+ROOT="$ROOT" CRON_WRITES="$SANDBOX/cron-writes" CRON_INSTALLED="$SANDBOX/cron-installed" bash -c '
+  source "$ROOT/bootstrap/lib/common.sh"
+  source "$ROOT/bootstrap/modules/docker.sh"
+  TARGET_USER=tester DRY_RUN=0
+  entry="0 3 * * * /usr/bin/docker system prune -f"
+  : > "$CRON_WRITES"
+
+  crontab() {
+    if [ "$1" = -l ]; then
+      [ "${LC_ALL:-}" = C ] || return 90
+      case "$CRON_READ" in
+        absent) printf "no crontab for tester\n" >&2; return 1 ;;
+        failed) printf "permission denied\n" >&2; return 2 ;;
+        present)
+          if [ "${CRON_NO_NEWLINE:-0}" = 1 ]; then
+            printf "%s" "$CRON_CONTENT"
+          else
+            printf "%s\n" "$CRON_CONTENT"
+          fi ;;
+        *) return 91 ;;
+      esac
+      return 0
+    fi
+    printf "write\n" >> "$CRON_WRITES"
+    [ "${CRON_WRITE_FAIL:-0}" = 0 ] || return 7
+    cp "$1" "$CRON_INSTALLED"
+  }
+
+  CRON_READ=absent setup_docker_prune_cron
+  [ "$(grep -c ^write "$CRON_WRITES")" = 1 ]
+  grep -Fxq -- "$entry" "$CRON_INSTALLED"
+
+  CRON_READ=present CRON_CONTENT="15 4 * * * /usr/bin/backup" setup_docker_prune_cron
+  grep -Fxq -- "15 4 * * * /usr/bin/backup" "$CRON_INSTALLED"
+  grep -Fxq -- "$entry" "$CRON_INSTALLED"
+
+  CRON_READ=present CRON_CONTENT="45 1 * * * /usr/bin/no-final-newline" CRON_NO_NEWLINE=1 setup_docker_prune_cron
+  grep -Fxq -- "45 1 * * * /usr/bin/no-final-newline" "$CRON_INSTALLED"
+  grep -Fxq -- "$entry" "$CRON_INSTALLED"
+
+  before="$(grep -c ^write "$CRON_WRITES")"
+  CRON_READ=present CRON_CONTENT="$entry" setup_docker_prune_cron
+  [ "$(grep -c ^write "$CRON_WRITES")" = "$before" ]
+
+  CRON_READ=present CRON_CONTENT="# $entry" setup_docker_prune_cron
+  [ "$(grep -c ^write "$CRON_WRITES")" = $((before + 1)) ]
+
+  before="$(grep -c ^write "$CRON_WRITES")"
+  CRON_READ=present CRON_CONTENT="$entry && echo misleading-substring" setup_docker_prune_cron
+  [ "$(grep -c ^write "$CRON_WRITES")" = $((before + 1)) ]
+
+  before="$(grep -c ^write "$CRON_WRITES")"
+  if CRON_READ=failed setup_docker_prune_cron; then exit 92; fi
+  [ "$(grep -c ^write "$CRON_WRITES")" = "$before" ]
+
+  CRON_READ=present CRON_CONTENT="30 2 * * * /usr/bin/retain" CRON_WRITE_FAIL=1
+  if setup_docker_prune_cron; then exit 93; fi
+' > "$OUT" 2>&1
+contains 'refusing to replace it: permission denied'
+printf 'ok: prune cron distinguishes absence and failures, matches exact active jobs, and preserves entries\n'
 
 # A failed network download must still clean the registered installer file.
 if ROOT="$ROOT" bash -c '
@@ -268,7 +408,7 @@ ROOT="$ROOT" bash -c '
 contains 'apt-get install -y zsh git curl ca-certificates'
 contains 'apt-get install -y curl ca-certificates'
 contains 'sudo sh'
-contains 'https://opencode.ai/install'
+contains 'https://opencode.ai/v2/install'
 contains '--no-modify-path'
 [ -z "$(ls -A "$TMPDIR")" ] || fail 'missing-binary dry-run leaked temp'
 printf 'ok: dry-run works with missing zsh/starship/opencode/curl binaries\n'

@@ -157,10 +157,7 @@ return {
     },
     config = function()
       require("mason-nvim-dap").setup({
-        ensure_installed = vim.env.DOTFILES_NVIM_PROVISION == "1" and {} or {
-          "codelldb",
-          "python",
-        },
+        ensure_installed = vim.env.DOTFILES_NVIM_PROVISION == "1" and {} or require("tooling").debuggers,
         automatic_installation = false,
       })
     end,
