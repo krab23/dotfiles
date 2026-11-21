@@ -1,0 +1,9 @@
+{
+  "hf_repo": "ornith-ai/Ornith-1.5-9B-GGUF:Q4_K_M",
+  "alias": "ornith",
+  "host": "127.0.0.1",
+  "port": 8080,
+  "context": 32768,
+  "predict": 8192,
+  "extra_args": ["--jinja", "--no-mmproj", "-np", "1", "-fa", "on", "-ctk", "q8_0", "-ctv", "q8_0"]
+}

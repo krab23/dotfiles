@@ -46,6 +46,13 @@ else
   export EDITOR='vi'
 fi
 
+# Background-only llama.cpp helpers. No process or download starts during shell
+# initialization. Existing local aliases below still take precedence.
+function ornith-start { command llama-background start "$@"; }
+function ornith-stop { command llama-background stop "$@"; }
+function ornith-logs { command llama-background logs --follow "$@"; }
+function ornith-status { command llama-background status "$@"; }
+
 # Machine-specific settings and aliases take precedence over these defaults.
 if [[ -r "$HOME/.zshrc.local" ]]; then
   source "$HOME/.zshrc.local"

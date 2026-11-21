@@ -1,0 +1,24 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "providers": {
+    "llamacpp": {
+      "name": "Local llama.cpp",
+      "package": "@opencode/ai/providers/openai-compatible",
+      "settings": { "baseURL": "http://127.0.0.1:8080/v1" },
+      "models": {
+        "ornith15-9b": {
+          "modelID": "ornith",
+          "name": "Ornith 1.5 9B Local",
+          "capabilities": { "tools": true, "input": ["text"], "output": ["text"] },
+          "limit": { "context": 32768, "output": 8192 }
+        },
+        "qwen35-9b": {
+          "modelID": "unsloth/Qwen3.5-9B-GGUF:Q4_K_M",
+          "name": "Qwen3.5 9B Local (separate server setup)",
+          "capabilities": { "tools": true, "input": ["text"], "output": ["text"] },
+          "limit": { "context": 8192, "output": 2048 }
+        }
+      }
+    }
+  }
+}

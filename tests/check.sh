@@ -25,6 +25,7 @@ python3 tests/configs.py
 git diff --check
 git diff --cached --check
 bash tests/bootstrap.sh
+python3 tests/llama.py
 bash tests/zsh.sh
 bash tests/nvim.sh
 printf 'All offline checks passed.\n'

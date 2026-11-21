@@ -22,6 +22,6 @@ chmod 440 /etc/sudoers.d/tester
 mkdir /home/tester/dotfiles
 # Exclude local caches, .git, and agent dependencies from the disposable copy.
 tar -C /input --exclude=.git --exclude=node_modules -cf - \
-  bootstrap git nvim opencode starship zsh tests | tar -C /home/tester/dotfiles -xf -
+  bootstrap git llama nvim opencode starship zsh tests | tar -C /home/tester/dotfiles -xf -
 chown -R tester:tester /home/tester/dotfiles
 sudo -iu tester bash /home/tester/dotfiles/tests/acceptance/user.sh

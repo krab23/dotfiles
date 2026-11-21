@@ -30,6 +30,9 @@ Options:
   --dry-run                  Inspect current state and print changes without applying them
   --config-only              Link selected configs without installing software
   --help                     Show this help message
+
+Without --only, run default modules: $(bootstrap_default_module_names)
+Optional modules require --only; --skip never enables them.
 EOF
 }
 

@@ -5,6 +5,7 @@ set -euo pipefail
 module_zsh() {
   if [ "${CONFIG_ONLY:-0}" = 1 ]; then
     link_with_backup "$DOTFILES_ROOT/zsh/zshrc" "$HOME/.zshrc"
+    link_with_backup "$DOTFILES_ROOT/llama/launcher.py" "$HOME/.local/bin/llama-background"
     return 0
   fi
   pkg_install zsh git curl ca-certificates
@@ -21,6 +22,7 @@ module_zsh() {
   fi
 
   link_with_backup "$DOTFILES_ROOT/zsh/zshrc" "$HOME/.zshrc"
+  link_with_backup "$DOTFILES_ROOT/llama/launcher.py" "$HOME/.local/bin/llama-background"
 
   local target_user
   local current_shell

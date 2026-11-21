@@ -65,13 +65,106 @@ contains 'HOME must match'
 no_commands
 install --help
 contains 'Run only selected modules (git,zsh,starship,nvim,docker,opencode)'
+contains 'Without --only, run default modules: git,zsh,starship,nvim,docker,opencode'
+contains 'Optional modules require --only; --skip never enables them.'
 no_commands
 ROOT="$ROOT" bash -c '
   source "$ROOT/bootstrap/lib/common.sh"
   [ "$(bootstrap_module_names)" = git,zsh,starship,nvim,docker,opencode ]
+  [ "$(bootstrap_default_module_names)" = git,zsh,starship,nvim,docker,opencode ]
+  [ "${#BOOTSTRAP_OPTIONAL_MODULES[@]}" = 0 ]
   validate_module_csv "$(bootstrap_module_names)"
 ' > "$OUT" 2>&1
 printf 'ok: arguments and account validation precede mutation\n'
+
+# Exercise future optional modules with the real parser, registry and dispatch,
+# but only inert fixture adapters/modules. No unfinished installer is registered
+# in production and no real bootstrap runs against the development host.
+(
+  fixture="$SANDBOX/optional fixture"
+  mkdir -p "$fixture/bootstrap/lib" "$fixture/bootstrap/distros" "$fixture/bootstrap/modules" "$fixture/tmp"
+  cp "$ROOT/bootstrap/install.sh" "$fixture/bootstrap/install.sh"
+  cp "$ROOT/bootstrap/lib/"{distro_detect,packages}.sh "$fixture/bootstrap/lib/"
+  sed 's/^BOOTSTRAP_OPTIONAL_MODULES=()$/BOOTSTRAP_OPTIONAL_MODULES=(antigravity llamacpp)/' \
+    "$ROOT/bootstrap/lib/common.sh" > "$fixture/bootstrap/lib/common.sh"
+  printf ':\n' > "$fixture/bootstrap/distros/arch.sh"
+  for module in git zsh starship nvim docker opencode antigravity llamacpp; do
+    printf 'module_%s() { run_cmd touch "$HOME/ran-%s"; }\n' "$module" "$module" \
+      > "$fixture/bootstrap/modules/$module.sh"
+  done
+  export TMPDIR="$fixture/tmp"
+  case_number=0
+  fixture_install() {
+    case_number=$((case_number + 1))
+    export HOME="$fixture/home-$case_number"
+    mkdir -p "$HOME"
+    bash "$fixture/bootstrap/install.sh" --distro arch "$@" > "$OUT" 2>&1
+  }
+  fixture_install --help
+  contains 'Run only selected modules (git,zsh,starship,nvim,docker,opencode,antigravity,llamacpp)'
+  contains 'Without --only, run default modules: git,zsh,starship,nvim,docker,opencode'
+  no_commands
+
+  fixture_install --config-only
+  for module in git zsh starship nvim docker opencode; do
+    [ -f "$HOME/ran-$module" ] || fail "default module not selected: $module"
+  done
+  [ ! -e "$HOME/ran-antigravity" ] && [ ! -e "$HOME/ran-llamacpp" ] || fail 'default enabled optional modules'
+  no_commands
+
+  fixture_install --skip git --config-only
+  [ ! -e "$HOME/ran-git" ] && [ -f "$HOME/ran-zsh" ] || fail 'skip changed default selection'
+  [ ! -e "$HOME/ran-antigravity" ] && [ ! -e "$HOME/ran-llamacpp" ] || fail 'skip enabled optional modules'
+  no_commands
+
+  fixture_install --only antigravity,llamacpp --config-only
+  [ -f "$HOME/ran-antigravity" ] && [ -f "$HOME/ran-llamacpp" ] || fail 'explicit optional selection failed'
+  [ "$(find "$HOME" -type f | wc -l)" -eq 2 ] || fail 'optional-only ran defaults'
+  no_commands
+
+  fixture_install --only git,llamacpp --skip llamacpp --config-only
+  [ -f "$HOME/ran-git" ] && [ ! -e "$HOME/ran-llamacpp" ] || fail 'mixed selection lost skip precedence'
+  [ "$(find "$HOME" -type f | wc -l)" -eq 1 ] || fail 'mixed selection ran extra modules'
+  no_commands
+
+  fixture_install --only antigravity --skip antigravity
+  [ -z "$(ls -A "$HOME")" ] || fail 'empty optional selection ran a module'
+  no_commands
+
+  fixture_install --skip git,zsh,starship,nvim,docker,opencode
+  [ -z "$(ls -A "$HOME")" ] || fail 'skipping all defaults enabled an optional module'
+  no_commands
+
+  for args in '--dry-run' '--only llamacpp --dry-run' '--only antigravity --config-only --dry-run'; do
+    # Intentional word splitting for this fixed argument table.
+    fixture_install $args
+    [ -z "$(ls -A "$HOME")" ] || fail 'optional fixture dry-run changed HOME'
+    [ -z "$(ls -A "$TMPDIR")" ] || fail 'optional fixture dry-run created temporary files'
+    no_commands
+  done
+  contains 'Running module: antigravity'
+  contains '[dry-run] touch'
+
+  fixture_install
+  [ ! -e "$HOME/ran-antigravity" ] && [ ! -e "$HOME/ran-llamacpp" ] || fail 'real-mode default enabled optional modules'
+  [ "$(find "$HOME" -type f | wc -l)" -eq 6 ] || fail 'real-mode defaults changed'
+  grep -Fxq 'sudo -v' "$MOCK_LOG" || fail 'default fixture missed sudo preflight'
+  [ "$(wc -l < "$MOCK_LOG")" -eq 1 ] || fail 'default fixture ran unexpected commands'
+  : > "$MOCK_LOG"
+
+  fixture_install --only llamacpp
+  [ -f "$HOME/ran-llamacpp" ] || fail 'optional real-mode dispatch failed'
+  grep -Fxq 'sudo -v' "$MOCK_LOG" || fail 'optional module missed sudo preflight'
+  [ "$(wc -l < "$MOCK_LOG")" -eq 1 ] || fail 'fixture ran unexpected commands'
+  : > "$MOCK_LOG"
+
+  for args in '--only unknown --config-only' '--only llamacpp, --dry-run' '--skip antigravity,,llamacpp'; do
+    if fixture_install $args; then fail "optional fixture accepted $args"; fi
+    [ -z "$(ls -A "$HOME")" ] || fail 'invalid optional selection changed HOME'
+    no_commands
+  done
+)
+printf 'ok: optional modules require explicit selection in all modes, skip wins, preflight stays safe\n'
 
 for distro in arch debian ubuntu; do
   install --distro "$distro" --dry-run --enable-docker-prune
@@ -147,9 +240,14 @@ install --distro arch --config-only --enable-docker-prune
 no_commands
 [ "$(readlink "$HOME/.gitconfig")" = "$ROOT/git/gitconfig" ] || fail 'git link'
 [ "$(readlink "$HOME/.zshrc")" = "$ROOT/zsh/zshrc" ] || fail 'zsh link'
+[ "$(readlink "$HOME/.local/bin/llama-background")" = "$ROOT/llama/launcher.py" ] || fail 'llama launcher link'
+[ -x "$HOME/.local/bin/llama-background" ] || fail 'llama launcher not executable'
 [ "$(readlink "$HOME/.config/starship.toml")" = "$ROOT/starship/starship.toml" ] || fail 'starship link'
 [ "$(readlink "$HOME/.config/nvim")" = "$ROOT/nvim" ] || fail 'nvim link'
 [ "$(readlink "$HOME/.config/opencode/opencode.json")" = "$ROOT/opencode/opencode.json" ] || fail 'opencode link'
+[ "$(readlink "$HOME/.config/opencode/cli.json")" = "$ROOT/opencode/cli.json" ] || fail 'OpenCode CLI link'
+[ ! -e "$HOME/.local/state/llama-background" ] || fail 'config-only created llama runtime state'
+[ ! -e "$HOME/.cache/llama.cpp" ] || fail 'config-only downloaded a model'
 [ ! -e "$HOME/.opencode" ] || fail 'config-only installed OpenCode'
 [ ! -e "$HOME/.oh-my-zsh" ] || fail 'config-only installed Oh My Zsh'
 for distro in debian ubuntu; do
@@ -184,18 +282,53 @@ no_commands
 [ "$(readlink "$HOME/custom config/nvim")" = "$ROOT/nvim" ] || fail 'nvim XDG link'
 [ "$(readlink "$HOME/custom config/starship.toml")" = "$ROOT/starship/starship.toml" ] || fail 'starship XDG link'
 [ "$(readlink "$HOME/custom config/opencode/opencode.json")" = "$ROOT/opencode/opencode.json" ] || fail 'opencode XDG link'
+[ "$(readlink "$HOME/custom config/opencode/cli.json")" = "$ROOT/opencode/cli.json" ] || fail 'OpenCode CLI XDG link'
 printf 'ok: config links respect XDG_CONFIG_HOME with spaces\n'
 
 mkdir -p "$HOME/existing config/opencode"
 printf '{"model":"provider/model"}\n' > "$HOME/existing config/opencode/opencode.json"
+printf '{"session":{"permissions":"autoaccept"}}\n' > "$HOME/existing config/opencode/cli.json"
 printf 'retain\n' > "$HOME/existing config/opencode/other"
 XDG_CONFIG_HOME="$HOME/existing config" install --distro debian --only opencode --config-only
 no_commands
-contains 'Backing up existing target'
-backups=("$HOME/existing config/opencode/opencode.json.backup."*)
-[ "${#backups[@]}" = 1 ] && [ "$(<"${backups[0]}")" = '{"model":"provider/model"}' ] || fail 'OpenCode config backup'
+contains 'Preserving existing OpenCode config'
+[ ! -L "$HOME/existing config/opencode/opencode.json" ] || fail 'existing OpenCode JSON replaced'
+[ "$(<"$HOME/existing config/opencode/opencode.json")" = '{"model":"provider/model"}' ] || fail 'OpenCode JSON changed'
+[ "$(<"$HOME/existing config/opencode/cli.json")" = '{"session":{"permissions":"autoaccept"}}' ] || fail 'OpenCode CLI preferences changed'
 [ "$(<"$HOME/existing config/opencode/other")" = retain ] || fail 'OpenCode sibling config changed'
-printf 'ok: existing OpenCode config backed up and sibling files preserved\n'
+for mode in jsonc-only both dangling; do
+  config="$HOME/$mode config/opencode"
+  mkdir -p "$config"
+  if [ "$mode" = dangling ]; then
+    ln -s "$HOME/missing-jsonc" "$config/opencode.jsonc"
+    ln -s "$HOME/missing-cli" "$config/cli.json"
+  else
+    printf '// local settings\n{"providers":{"local":{"name":"retain"}}}\n' > "$config/opencode.jsonc"
+    cp "$config/opencode.jsonc" "$SANDBOX/expected-jsonc"
+  fi
+  if [ "$mode" = both ]; then
+    printf '{"model":"keep/both"}\n' > "$config/opencode.json"
+  fi
+  XDG_CONFIG_HOME="${config%/opencode}" install --distro arch --only opencode --config-only --dry-run
+  no_commands
+  [ ! -L "$config/opencode.json" ] || fail 'OpenCode dry-run created a JSON link'
+  XDG_CONFIG_HOME="${config%/opencode}" install --distro arch --only opencode --config-only
+  no_commands
+  contains 'Preserving existing OpenCode JSONC config'
+  if [ "$mode" = both ]; then
+    [ "$(<"$config/opencode.json")" = '{"model":"keep/both"}' ] || fail 'JSON/JSONC coexistence changed'
+  else
+    [ ! -e "$config/opencode.json" ] && [ ! -L "$config/opencode.json" ] || fail 'JSONC config shadowed by new JSON'
+  fi
+  if [ "$mode" = dangling ]; then
+    [ "$(readlink "$config/opencode.jsonc")" = "$HOME/missing-jsonc" ] || fail 'dangling JSONC replaced'
+    [ "$(readlink "$config/cli.json")" = "$HOME/missing-cli" ] || fail 'dangling CLI config replaced'
+  else
+    cmp "$config/opencode.jsonc" "$SANDBOX/expected-jsonc" || fail 'JSONC content changed'
+    [ "$(readlink "$config/cli.json")" = "$ROOT/opencode/cli.json" ] || fail 'JSONC prevented missing CLI defaults'
+  fi
+done
+printf 'ok: OpenCode JSON/JSONC, CLI preferences, dangling links and sibling files preserved\n'
 
 # Repeat within a fixed timestamp: files, directories and dangling links must
 # each survive, and a missing source or failed move must not publish a new link.

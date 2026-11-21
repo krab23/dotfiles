@@ -1,7 +1,8 @@
 # dotfiles
 
 Personal dotfiles and a **post-install** bootstrap for Git, zsh + Oh My Zsh,
-Starship, Neovim, Docker, and OpenCode. Running without module flags installs the full setup.
+Starship, Neovim, Docker, and OpenCode. Running without module flags installs these
+default modules; optional modules must be selected explicitly with `--only`.
 
 Primary targets:
 - Native Arch Linux x86-64
@@ -63,6 +64,10 @@ languages, runtime dependencies, and troubleshooting.
 
 - `--only` and `--skip` accept `git,zsh,starship,nvim,docker,opencode`; skip wins if both
   name the same module. Unknown names and malformed lists fail before changes.
+- All currently implemented modules are defaults. Antigravity and llama.cpp are
+  planned optional modules, not yet available; see the
+  [inventory and expansion plan](docs/bootstrap-expansion.md). `--skip` will never
+  enable optional modules.
 - `--config-only` links the selected configs and creates the Git local-override
   file if missing. It does not install software, run Neovim, change the login
   shell, or configure Docker. Starting Neovim later can still download tools.
@@ -80,14 +85,19 @@ languages, runtime dependencies, and troubleshooting.
 | --- | --- |
 | `git/gitconfig` | `~/.gitconfig` |
 | `zsh/zshrc` | `~/.zshrc` |
+| `llama/launcher.py` (zsh module) | `~/.local/bin/llama-background` |
 | `starship/starship.toml` | `${XDG_CONFIG_HOME:-~/.config}/starship.toml` |
 | `nvim/` | `${XDG_CONFIG_HOME:-~/.config}/nvim` |
 | `opencode/opencode.json` | `${XDG_CONFIG_HOME:-~/.config}/opencode/opencode.json` |
+| `opencode/cli.json` | `${XDG_CONFIG_HOME:-~/.config}/opencode/cli.json` |
 
 Keep the checkout in place: the links point into it. Existing files, directories,
 and incorrect symlinks are moved beside their original path as
 `<target>.backup.<timestamp>` (with numbered suffixes if needed). Correct links
 are reused. Run only one bootstrap instance at a time.
+OpenCode is an exception: existing JSON/JSONC and CLI configs are preserved, not
+replaced; only missing configs are linked. See [OpenCode settings](opencode/README.md)
+for adopting preferences and merging the optional local-provider example.
 
 To restore a previous config, remove **the installed symlink**, then move the
 desired backup back to the original path. This does not uninstall packages or
@@ -111,12 +121,18 @@ message; completed steps are generally reused.
   guarded. Existing `LANG` and `LC_*` settings are preserved. If `LANG` is unset or
   empty, zsh defaults to `C.UTF-8`. This is a shell-only
   fallback: no locale generation or system config edits occur.
+- Shared `ornith-start`/`ornith-stop`/`ornith-logs`/`ornith-status` functions use an
+  explicit [background launcher](llama/README.md). It requires Python 3.11+ and an
+  existing llama-server; no runtime, model, or service is installed/started by
+  these config links. Existing local aliases still override the functions.
 - `~/.local/bin` is added by the zsh config. Debian's Neovim/Tree-sitter and, when
   needed, Node binaries live under `~/.local/opt` with links in this directory.
 - OpenCode's global config sets `"permission": "allow"`. Project and agent-specific
   permissions can override this default, as can an existing global `opencode.jsonc`.
-  Existing `opencode.json` files are backed up, not merged; copy any provider/model
-  settings you need from the backup. Quit and restart OpenCode after config changes.
+  Existing server/CLI configs are preserved, not merged or replaced. Repository
+  CLI defaults do not autoaccept permission requests, but do not override the
+  server's allow policy. V2 reloads config changes automatically; use `/reload`
+  for a full reload.
   The repository-root `opencode.json` is the separate project configuration.
 - Arch installs the `opencode` package. Debian/Ubuntu use the official V2 installer
   at `https://opencode.ai/v2/install`
@@ -180,6 +196,7 @@ bootstrap/
 git/
 nvim/
 opencode/
+llama/
 starship/
 zsh/
 tests/

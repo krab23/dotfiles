@@ -31,6 +31,23 @@ else
 fi
 [[ $plugins == git && $ZLE_RPROMPT_INDENT == 0 ]] || fail 'useful defaults lost'
 [[ $ZSH == "$HOME/.oh-my-zsh" ]] || fail 'OMZ home path'
+for helper in ornith-start ornith-stop ornith-logs ornith-status; do
+  (( $+functions[$helper] )) || fail "missing background helper: $helper"
+done
+(( ! $+functions[ornith] && ! $+aliases[ornith] )) || fail 'foreground alias returned'
+if [[ $CASE == full ]]; then
+  [[ ! -e $HOME/launcher-called ]] || fail 'shell startup invoked the launcher'
+  ornith-start --model 'model with spaces.gguf'
+  [[ $(<$HOME/launcher-called) == $'start\n--model\nmodel with spaces.gguf' ]] || fail 'start arguments not preserved'
+  ornith-stop --timeout 4
+  [[ $(<$HOME/launcher-called) == $'stop\n--timeout\n4' ]] || fail 'stop arguments not preserved'
+  ornith-logs --lines 2
+  [[ $(<$HOME/launcher-called) == $'logs\n--follow\n--lines\n2' ]] || fail 'log arguments not preserved'
+  ornith-status
+  [[ $(<$HOME/launcher-called) == status ]] || fail 'status delegation failed'
+elif [[ $CASE == overrides ]]; then
+  [[ $aliases[ornith-start] == 'print local-start' ]] || fail 'local background alias lost precedence'
+fi
 
 # Compare the entire PATH, including order and duplicate removal. Host binaries
 # are excluded so an installed Starship/Neovim cannot mask missing-tool bugs.
@@ -88,6 +105,11 @@ printf '%s\n' '(( STARSHIP_INIT_COUNT += 1 ))' 'PROMPT=starship-prompt'
 SH
     printf '#!/bin/sh\nexit 0\n' > "$home/.local/bin/nvim"
     chmod +x "$home/.local/bin/starship" "$home/.local/bin/nvim"
+    cat > "$home/.local/bin/llama-background" <<'SH'
+#!/bin/sh
+printf '%s\n' "$@" > "$HOME/launcher-called"
+SH
+    chmod +x "$home/.local/bin/llama-background"
     cat > "$home/google-cloud-sdk/path.zsh.inc" <<'ZSH'
 path+=("$HOME/.local/bin")
 SDK_PATH_LOADED=1
@@ -105,6 +127,7 @@ fi
 EDITOR=local-editor
 PROMPT=local-prompt
 alias localtest=true
+alias ornith-start='print local-start'
 ZSH
   fi
 

@@ -2,13 +2,22 @@
 
 set -euo pipefail
 
-# The order here is the bootstrap execution order. Keep module discovery simple:
+# Defaults run without --only; optional modules must be selected explicitly.
+# Each name belongs to exactly one group. Defaults run before optional modules;
 # every registered name maps to bootstrap/modules/<name>.sh and module_<name>.
-BOOTSTRAP_MODULES=(git zsh starship nvim docker opencode)
+BOOTSTRAP_DEFAULT_MODULES=(git zsh starship nvim docker opencode)
+# Populate as optional installers land; do not advertise unimplemented modules.
+BOOTSTRAP_OPTIONAL_MODULES=()
+BOOTSTRAP_MODULES=("${BOOTSTRAP_DEFAULT_MODULES[@]}" "${BOOTSTRAP_OPTIONAL_MODULES[@]}")
 
 bootstrap_module_names() {
   local IFS=,
   printf '%s' "${BOOTSTRAP_MODULES[*]}"
+}
+
+bootstrap_default_module_names() {
+  local IFS=,
+  printf '%s' "${BOOTSTRAP_DEFAULT_MODULES[*]}"
 }
 
 timestamp() {
@@ -194,7 +203,9 @@ csv_contains() {
 module_selected() {
   local mod="$1"
 
-  if [ -n "${ONLY_MODULES:-}" ] && ! csv_contains "$ONLY_MODULES" "$mod"; then
+  if [ -n "${ONLY_MODULES:-}" ]; then
+    csv_contains "$ONLY_MODULES" "$mod" || return 1
+  elif ! csv_contains "$(bootstrap_default_module_names)" "$mod"; then
     return 1
   fi
 

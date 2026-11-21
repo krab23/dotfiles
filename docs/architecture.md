@@ -47,8 +47,13 @@ outside the bootstrap's scope.
 
 Debian and Ubuntu wrappers provide distro-specific values and codename policy to
 `bootstrap/distros/apt-family.sh`; shared apt-family installation lives there.
-`BOOTSTRAP_MODULES` in `bootstrap/lib/common.sh` is the ordered registry used by
-help, validation, loading, preflight, and dispatch.
+`BOOTSTRAP_DEFAULT_MODULES` and `BOOTSTRAP_OPTIONAL_MODULES` in
+`bootstrap/lib/common.sh` declare each module once, in its selection group.
+`BOOTSTRAP_MODULES` combines them into the ordered registry used by help,
+validation, loading, preflight, and dispatch. Without `--only`, only defaults run;
+optional modules require explicit `--only` selection. `--skip` always wins and
+never enables an optional module. The optional group is empty until its installers
+are implemented; defaults retain their current order and run before optionals.
 
 ## Neovim provisioning
 
@@ -65,9 +70,12 @@ tool releases follow the live registry; already installed tools are retained.
 
 ## OpenCode provisioning
 
-The module links `opencode/opencode.json` into the XDG config directory with
-global `"permission": "allow"`. It uses the standard backup behavior for an existing
-JSON config and leaves other files in the OpenCode config directory in place.
+The module seeds missing `opencode/opencode.json` and `opencode/cli.json` links in
+the XDG config directory. Existing JSON/JSONC and CLI files, including unmanaged or
+dangling symlinks, are preserved. A JSONC file suppresses creation of a competing
+JSON file. The existing server default remains global `"permission": "allow"`;
+the CLI default does not autoaccept requests but cannot override server allow rules.
+Provider examples are opt-in manual merges. See `opencode/README.md`.
 Project/agent rules and an existing global JSONC config can override the default.
 Arch uses its native package; Debian/Ubuntu use `https://opencode.ai/v2/install` with
 `--no-modify-path`, reusing an executable on PATH or at `~/.opencode/bin/opencode`.
@@ -75,10 +83,21 @@ The zsh configuration already includes that user-local bin directory.
 Existing V1 binaries are reported and retained; migration is a separate explicit
 operation, following upstream guidance for package-managed installations.
 
+## Background model launcher
+
+The zsh module also links `llama/launcher.py` as `~/.local/bin/llama-background`.
+Shell functions delegate to its start/stop/logs/status commands; local aliases
+retain precedence. Linking it never invokes Python, downloads weights, starts a
+server, or installs llama.cpp/Python on behalf of zsh-only installs. The launcher
+requires Linux/Python 3.11+, uses a private XDG state directory and advisory lock,
+and validates boot/start-time identity before signalling via pidfd. Local model
+paths and explicit download consent are mutually exclusive. `tests/llama.py` uses
+only fake servers; see `llama/README.md` for migration and runtime overrides.
+
 ## Extending and verifying
 
 New modules should declare their own dependencies, implement all execution modes,
-and be registered in the shared ordered module list. Add regression
+and be registered in exactly one of the default/optional module lists. Add regression
 cases under `tests/` using isolated HOME/XDG directories and mocked privileged
 commands. Never run a real bootstrap on the development host as a test.
 
